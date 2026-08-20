@@ -1,42 +1,46 @@
 using BistroPOS.Mobile.Services;
-using Microsoft.Maui.Controls;
 
-namespace BistroPOS.Mobile
+namespace BistroPOS.Mobile;
+
+public partial class LoginPage : ContentPage
 {
-    public partial class LoginPage : ContentPage
+    public LoginPage()
     {
-        private readonly ApiService _api;
+        InitializeComponent();
+    }
 
-        public LoginPage()
+    private async void OnLoginClicked(object sender, EventArgs e)
+    {
+        var username = UsernameEntry.Text?.Trim();
+        var password = PasswordEntry.Text?.Trim();
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            InitializeComponent();
-            _api = new ApiService();
+            await DisplayAlert("تنبيه", "الرجاء إدخال اسم المستخدم وكلمة المرور", "حسناً");
+            return;
         }
 
-        private async void OnLoginClicked(object sender, EventArgs e)
+        // محاولة تسجيل الدخول مع حماية من الأخطاء (Try-Catch)
+        try
         {
-            var username = UsernameEntry.Text;
-            var password = PasswordEntry.Text;
+            var api = new ApiService();
+            var result = await api.LoginAsync(username, password);
 
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            if (result != null && result.Success)
             {
-                await DisplayAlert("���", "������ ����� ��� �������� ����� ������", "���");
-                return;
+                await DisplayAlert("نجاح", $"مرحباً {result.FullName}", "حسناً");
+                // لنقل إلى الصفحة الرئيسية
+                await Shell.Current.GoToAsync("//MainPage");
             }
-
-            var user = await _api.LoginAsync(username, password);
-
-            if (user == null || !user.Success)
+            else
             {
-                await DisplayAlert("���", "��� �������� �� ���� ������ ��� �����", "���");
-                return;
+                await DisplayAlert("خطأ", "اسم المستخدم أو كلمة المرور خطأ", "حاول مجدداً");
             }
-
-            Preferences.Set("Username", user.Username);
-            Preferences.Set("FullName", user.FullName);
-            Preferences.Set("Role", user.Role);
-
-            await DisplayAlert("���", "����� ������ ����! (��� �� �� ���� ������)", "����");
+        }
+        catch (Exception ex)
+        {
+            // في حال حصل خطأ تقني، يعرض رسالة بدل ما يطير
+            await DisplayAlert("مشكلة تقنية", $"تعذر الاتصال بالسيرفر. تأكد من الشبكة.", "حسناً");
         }
     }
 }
