@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+using BistroPOS.Mobile.Services;
+using Microsoft.Extensions.Logging;
 
 namespace BistroPOS.Mobile
 {
@@ -15,9 +16,8 @@ namespace BistroPOS.Mobile
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-#if DEBUG
-    		builder.Logging.AddDebug();
-#endif
+            // إضافة خدمات التطبيق
+            builder.Services.AddSingleton<ApiService>();
 
             return builder.Build();
         }
