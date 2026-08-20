@@ -12,7 +12,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 8.0.x
         
     - name: Install MAUI Workload
       run: dotnet workload install maui
@@ -21,7 +21,7 @@ jobs:
       run: dotnet restore
       
     - name: Build Android APK
-      run: dotnet publish -f net9.0-android -c Release -o ./artifacts
+      run: dotnet publish -f net8.0-android -c Release -o ./artifacts
       
     - name: Upload APK to Artifacts
       uses: actions/upload-artifact@v4
