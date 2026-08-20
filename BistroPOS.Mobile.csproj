@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- استهداف الإصدار 9.0 للأندرويد (الأكثر استقراراً) -->
     <TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
+    
     <OutputType>Exe</OutputType>
     <RootNamespace>BistroPOS.Mobile</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -10,21 +12,29 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <!-- Display name -->
+    <!-- اسم التطبيق -->
     <ApplicationTitle>BistroPOS</ApplicationTitle>
 
-    <!-- App Identifier -->
+    <!-- معرف التطبيق -->
     <ApplicationId>com.cod95.bistropos.mobile</ApplicationId>
     <ApplicationIdGuid>54FAB5A4-519C-42BD-81F1-C1FEE3F35804</ApplicationIdGuid>
 
-    <!-- Versions -->
+    <!-- الإصدارات -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
+    <!-- إصدارات أنظمة التشغيل (مهم جداً لتجنب الخطأ) -->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
+
+  <!-- إضافة الحزم اللازمة (حل مشكلة MA002) -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.120" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+  </ItemGroup>
 
 </Project>
