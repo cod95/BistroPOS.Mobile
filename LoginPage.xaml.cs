@@ -34,7 +34,7 @@ public partial class LoginPage : ContentPage
             }
             else
             {
-                await DisplayAlert("خطأ", "اسم المستخدم أو كلمة المرور خطأ", "حاول مجدداً");
+                await DisplayAlert("مشكلة تقنية", $"الخطأ الحقيقي: {ex.Message}", "حسناً");
             }
         }
         catch (Exception ex)
