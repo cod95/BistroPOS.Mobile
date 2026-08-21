@@ -15,15 +15,16 @@ public partial class LoginPage : ContentPage
             await DisplayAlert("تنبيه", "الرجاء إدخال اسم المستخدم وكلمة المرور", "حسناً");
             return;
         }
-        // محاولة تسجيل الدخول مع حماية من الأخطاء (Try-Catch)
         try
         {
             var api = new ApiService();
             var result = await api.LoginAsync(username, password);
             if (result != null && result.Success)
             {
-                await DisplayAlert("نجاح", $"مرحباً {result.FullName}", "حسناً");
-                // تم حذف سطر //MainPage نهائياً
+                Preferences.Set("Username", result.Username);
+                Preferences.Set("FullName", result.FullName);
+                Preferences.Set("Role", result.Role);
+                await Shell.Current.GoToAsync("//MainPage");
             }
             else
             {
@@ -32,7 +33,6 @@ public partial class LoginPage : ContentPage
         }
         catch (Exception ex)
         {
-            // مؤقتاً: نعرض الخطأ الحقيقي عشان نشخص المشكلة
             await DisplayAlert("مشكلة تقنية", $"الخطأ الحقيقي: {ex.Message}", "حسناً");
         }
     }
