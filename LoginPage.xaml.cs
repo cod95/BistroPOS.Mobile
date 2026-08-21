@@ -23,8 +23,7 @@ public partial class LoginPage : ContentPage
             if (result != null && result.Success)
             {
                 await DisplayAlert("نجاح", $"مرحباً {result.FullName}", "حسناً");
-                // لنقل إلى الصفحة الرئيسية
-                await Shell.Current.GoToAsync("//MainPage");
+                // تم حذف سطر //MainPage نهائياً
             }
             else
             {
