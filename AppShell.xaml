@@ -6,5 +6,6 @@
 
     <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate local:LoginPage}" />
     <ShellContent Route="MainPage" ContentTemplate="{DataTemplate local:MainPage}" />
+    <ShellContent Route="OrderPage" ContentTemplate="{DataTemplate local:OrderPage}" />
 
 </Shell>
