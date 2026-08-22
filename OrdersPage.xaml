@@ -46,14 +46,28 @@
                         Margin="10">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame Margin="0,5" Padding="12" CornerRadius="8" BorderColor="#E0E0E0">
+                    <Frame Margin="0,5" Padding="12" CornerRadius="8"
+                           BorderColor="{Binding CardBorderColor}">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnOrderCardTapped"/>
+                        </Frame.GestureRecognizers>
                         <VerticalStackLayout Spacing="4">
 
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                                 <Label Grid.Column="0"
+                                       Text="جديد"
+                                       IsVisible="{Binding IsNew}"
+                                       BackgroundColor="#E67E22"
+                                       TextColor="White"
+                                       FontAttributes="Bold"
+                                       FontSize="11"
+                                       Padding="6,2"
+                                       Margin="0,0,6,0"
+                                       VerticalOptions="Center"/>
+                                <Label Grid.Column="1"
                                        Text="{Binding OrderIdDisplay}"
                                        FontAttributes="Bold" FontSize="16"/>
-                                <Label Grid.Column="1"
+                                <Label Grid.Column="2"
                                        Text="{Binding StatusText}"
                                        TextColor="{Binding StatusColor}"
                                        FontAttributes="Bold"/>
