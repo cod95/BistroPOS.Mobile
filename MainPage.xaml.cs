@@ -26,4 +26,9 @@ public partial class MainPage : ContentPage
     {
         await Shell.Current.GoToAsync("//OrderPage");
     }
+
+    private async void OnOrdersClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//OrdersPage");
+    }
 }
