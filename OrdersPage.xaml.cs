@@ -1,0 +1,178 @@
+using System.Collections.ObjectModel;
+using System.Linq;
+using BistroPOS.Mobile.Services;
+
+namespace BistroPOS.Mobile;
+
+public partial class OrdersPage : ContentPage
+{
+    private readonly ObservableCollection<OrderViewModel> _orders = new();
+    private readonly ApiService _api = new();
+
+    private readonly string[] _statusValues = { "All", "Pending", "Preparing", "Ready", "Completed", "Cancelled" };
+    private readonly string[] _statusLabels = { "الكل", "قيد الانتظار", "تحضير", "جاهزة", "مكتملة", "ملغاة" };
+
+    public OrdersPage()
+    {
+        InitializeComponent();
+        OrdersCollectionView.ItemsSource = _orders;
+
+        StatusPicker.ItemsSource = _statusLabels;
+        StatusPicker.SelectedIndex = 0;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await LoadOrdersAsync();
+    }
+
+    private async void OnStatusFilterChanged(object sender, EventArgs e)
+    {
+        await LoadOrdersAsync();
+    }
+
+    private async void OnRefreshClicked(object sender, EventArgs e)
+    {
+        await LoadOrdersAsync();
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        string status = _statusValues[Math.Max(StatusPicker.SelectedIndex, 0)];
+        var orders = await _api.GetOrdersAsync(status);
+
+        if (orders == null)
+        {
+            await DisplayAlert("خطأ", "ما قدرنا نجيب لائحة الطلبات من السيرفر", "حسناً");
+            return;
+        }
+
+        _orders.Clear();
+        foreach (var o in orders)
+            _orders.Add(new OrderViewModel(o));
+    }
+
+    private async void OnActionClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.BindingContext is not OrderViewModel vm) return;
+
+        var result = await _api.AdvanceOrderAsync(vm.OrderId);
+        if (result != null && result.Success)
+        {
+            await LoadOrdersAsync();
+        }
+        else
+        {
+            await DisplayAlert("خطأ", result?.Message ?? "صار خطأ بتحديث الطلبية", "حسناً");
+        }
+    }
+
+    private async void OnDeleteClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.BindingContext is not OrderViewModel vm) return;
+
+        bool confirm = await DisplayAlert("تأكيد", $"حذف الطلبية {vm.OrderIdDisplay}؟", "نعم", "لأ");
+        if (!confirm) return;
+
+        var result = await _api.DeleteOrderAsync(vm.OrderId);
+        if (result != null && result.Success)
+        {
+            await LoadOrdersAsync();
+        }
+        else
+        {
+            await DisplayAlert("خطأ", result?.Message ?? "صار خطأ بحذف الطلبية", "حسناً");
+        }
+    }
+
+    private async void OnDeliverAllClicked(object sender, EventArgs e)
+    {
+        bool confirm = await DisplayAlert("تأكيد", "تسليم كل الطلبات النشطة؟", "نعم", "لأ");
+        if (!confirm) return;
+
+        var result = await _api.DeliverAllAsync();
+        if (result != null && result.Success)
+        {
+            await DisplayAlert("تم", $"تم تسليم {result.Count} طلب، الإجمالي: {result.Total:N0} ل.ل", "تمام");
+            await LoadOrdersAsync();
+        }
+        else
+        {
+            await DisplayAlert("خطأ", "صار خطأ بتسليم الطلبات", "حسناً");
+        }
+    }
+
+    private async void OnNewDayClicked(object sender, EventArgs e)
+    {
+        bool confirm = await DisplayAlert("يوم جديد", "سيتم حذف كل الطلبات النشطة، متأكد؟", "نعم", "لأ");
+        if (!confirm) return;
+
+        bool success = await _api.NewDayAsync();
+        if (success)
+        {
+            await DisplayAlert("تم", "تم بدء يوم جديد وحذف كل الطلبات", "تمام");
+            await LoadOrdersAsync();
+        }
+        else
+        {
+            await DisplayAlert("خطأ", "صار خطأ بتنفيذ يوم جديد", "حسناً");
+        }
+    }
+
+    private async void OnBackClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//MainPage");
+    }
+}
+
+public class OrderViewModel
+{
+    public int OrderId { get; }
+    public string OrderIdDisplay { get; }
+    public string ItemsText { get; }
+    public string TotalText { get; }
+    public string StatusText { get; }
+    public Color StatusColor { get; }
+    public string OrderTime { get; }
+    public string? ActionText { get; }
+    public bool HasAction { get; }
+    public bool CanDelete { get; }
+
+    public OrderViewModel(OrderDto dto)
+    {
+        OrderId = dto.OrderId;
+        OrderIdDisplay = $"#{dto.OrderId:D4}";
+        ItemsText = string.Join(", ", dto.Items.Select(i => $"{i.Quantity}x {i.Name}"));
+        TotalText = $"{dto.Total:N0} ل.ل";
+        OrderTime = dto.OrderTime;
+
+        switch (dto.Status)
+        {
+            case "Pending":
+                StatusText = "قيد الانتظار"; StatusColor = Color.FromArgb("#B46400");
+                ActionText = "بدء التحضير"; HasAction = true; CanDelete = true;
+                break;
+            case "Preparing":
+                StatusText = "تحضير"; StatusColor = Color.FromArgb("#1E64B4");
+                ActionText = "جاهز"; HasAction = true; CanDelete = false;
+                break;
+            case "Ready":
+                StatusText = "جاهزة"; StatusColor = Color.FromArgb("#1E8C3C");
+                ActionText = "تسليم"; HasAction = true; CanDelete = false;
+                break;
+            case "Completed":
+                StatusText = "مكتملة"; StatusColor = Colors.Gray;
+                ActionText = null; HasAction = false; CanDelete = true;
+                break;
+            case "Cancelled":
+                StatusText = "ملغاة"; StatusColor = Color.FromArgb("#A01E1E");
+                ActionText = "استرجاع"; HasAction = true; CanDelete = true;
+                break;
+            default:
+                StatusText = dto.Status; StatusColor = Colors.Black;
+                ActionText = null; HasAction = false; CanDelete = true;
+                break;
+        }
+    }
+}
