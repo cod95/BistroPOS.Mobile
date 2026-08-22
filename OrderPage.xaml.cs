@@ -14,6 +14,7 @@ public partial class OrderPage : ContentPage
     {
         InitializeComponent();
         MenuCollectionView.ItemsSource = _menuItems;
+        DiscountEntry.TextChanged += (s, e) => UpdateTotal();
     }
 
     protected override async void OnAppearing()
@@ -28,7 +29,7 @@ public partial class OrderPage : ContentPage
 
         if (items == null)
         {
-            await DisplayAlert("خطأ", "ما قدرنا نجيب المينيو من السيرفر", "حسناً");
+            await DisplayAlert("خطأ", "تعذّر جلب قائمة الأصناف من السيرفر", "حسناً");
             return;
         }
 
@@ -65,9 +66,19 @@ public partial class OrderPage : ContentPage
         }
     }
 
+    private void OnDeferredToggled(object sender, ToggledEventArgs e)
+    {
+        TableEntry.IsVisible = e.Value;
+        if (!e.Value)
+            TableEntry.Text = string.Empty;
+    }
+
     private void UpdateTotal()
     {
-        decimal total = _menuItems.Sum(i => i.Subtotal);
+        decimal subtotal = _menuItems.Sum(i => i.Subtotal);
+        decimal.TryParse(DiscountEntry.Text, out decimal discount);
+        decimal total = subtotal - discount;
+        if (total < 0) total = 0;
         TotalLabel.Text = $"الإجمالي: {total:N0} ل.ل";
     }
 
@@ -82,13 +93,22 @@ public partial class OrderPage : ContentPage
 
         if (selectedItems.Count == 0)
         {
-            await DisplayAlert("تنبيه", "لازم تختار صنف واحد عالأقل", "حسناً");
+            await DisplayAlert("تنبيه", "يجب اختيار صنف واحد عالأقل", "حسناً");
             return;
         }
 
+        if (DeferredSwitch.IsToggled && string.IsNullOrWhiteSpace(TableEntry.Text))
+        {
+            await DisplayAlert("تنبيه", "اكتب اسم الزبون أو رقم الطاولة للفاتورة المؤجلة", "حسناً");
+            return;
+        }
+
+        decimal.TryParse(DiscountEntry.Text, out decimal discount);
+
         var request = new CreateOrderRequest
         {
-            TableNumber = "طلبية موبايل",
+            TableNumber = DeferredSwitch.IsToggled ? TableEntry.Text.Trim() : "طلبية فرعية",
+            Discount = discount,
             Items = selectedItems.Select(i => new OrderItemRequest
             {
                 ItemID = i.ItemId,
@@ -100,12 +120,12 @@ public partial class OrderPage : ContentPage
 
         if (result != null && result.Success)
         {
-            await DisplayAlert("تم", $"الطلبية أُرسلت بنجاح، رقم الطلبية: {result.OrderId}", "تمام");
+            await DisplayAlert("تم", $"الطلبية أُرسلت بنجاح، رقم الطلبية: {result.OrderId}", "حسنًا");
             await Shell.Current.GoToAsync("//MainPage");
         }
         else
         {
-            await DisplayAlert("خطأ", result?.Message ?? "صار خطأ بإرسال الطلبية", "حاول مجدداً");
+            await DisplayAlert("خطأ", result?.Message ?? "خطأ بإرسال الطلبية", "حاول مجدداً");
         }
     }
 }
