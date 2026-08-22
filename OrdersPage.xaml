@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BistroPOS.Mobile.OrdersPage"
+             Title="الطلبات">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <Button Grid.Row="0"
+                Text="← رجوع للرئيسية"
+                BackgroundColor="#444444"
+                TextColor="White"
+                Margin="10,10,10,0"
+                Clicked="OnBackClicked"/>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="10,10,10,0">
+            <Picker x:Name="StatusPicker"
+                    Grid.Column="0"
+                    Title="فلترة بالحالة"
+                    SelectedIndexChanged="OnStatusFilterChanged"/>
+            <Button Grid.Column="1"
+                    Text="تحديث"
+                    BackgroundColor="#444444"
+                    TextColor="White"
+                    Margin="10,0,0,0"
+                    Clicked="OnRefreshClicked"/>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="10,10,10,0" ColumnSpacing="10">
+            <Button Grid.Column="0"
+                    Text="تسليم الكل"
+                    BackgroundColor="#1E8C3C"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    Clicked="OnDeliverAllClicked"/>
+            <Button Grid.Column="1"
+                    Text="يوم جديد"
+                    BackgroundColor="#3C78B4"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    Clicked="OnNewDayClicked"/>
+        </Grid>
+
+        <CollectionView x:Name="OrdersCollectionView"
+                        Grid.Row="3"
+                        Margin="10">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="0,5" Padding="12" CornerRadius="8" BorderColor="#E0E0E0">
+                        <VerticalStackLayout Spacing="4">
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0"
+                                       Text="{Binding OrderIdDisplay}"
+                                       FontAttributes="Bold" FontSize="16"/>
+                                <Label Grid.Column="1"
+                                       Text="{Binding StatusText}"
+                                       TextColor="{Binding StatusColor}"
+                                       FontAttributes="Bold"/>
+                            </Grid>
+
+                            <Label Text="{Binding ItemsText}"
+                                   FontSize="13" TextColor="#555555"/>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0"
+                                       Text="{Binding TotalText}"
+                                       FontAttributes="Bold"/>
+                                <Label Grid.Column="1"
+                                       Text="{Binding OrderTime}"
+                                       FontSize="12" TextColor="Gray"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                <Button Grid.Column="0"
+                                        Text="{Binding ActionText}"
+                                        IsVisible="{Binding HasAction}"
+                                        BackgroundColor="#BA7517"
+                                        TextColor="White"
+                                        FontAttributes="Bold"
+                                        Clicked="OnActionClicked"/>
+                                <Button Grid.Column="1"
+                                        Text="حذف"
+                                        IsVisible="{Binding CanDelete}"
+                                        BackgroundColor="#FFEBEB"
+                                        TextColor="#A01E1E"
+                                        Margin="6,0,0,0"
+                                        Clicked="OnDeleteClicked"/>
+                            </Grid>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>
