@@ -4,7 +4,7 @@
              x:Class="BistroPOS.Mobile.OrderPage"
              Title="طلبية جديدة">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <Button Grid.Row="0"
                 Text="← رجوع للرئيسية"
@@ -13,8 +13,25 @@
                 Margin="10,10,10,0"
                 Clicked="OnBackClicked"/>
 
+        <VerticalStackLayout Grid.Row="1" Padding="10,10,10,0" Spacing="8">
+            <HorizontalStackLayout Spacing="10">
+                <Switch x:Name="DeferredSwitch" Toggled="OnDeferredToggled"/>
+                <Label Text="فاتورة مؤجلة (الزبون لسا ما دفع)"
+                       VerticalOptions="Center"
+                       FontAttributes="Bold"/>
+            </HorizontalStackLayout>
+
+            <Entry x:Name="TableEntry"
+                   Placeholder="اسم الزبون أو رقم الطاولة"
+                   IsVisible="False"/>
+
+            <Entry x:Name="DiscountEntry"
+                   Placeholder="الحسم بالليرة (اختياري)"
+                   Keyboard="Numeric"/>
+        </VerticalStackLayout>
+
         <CollectionView x:Name="MenuCollectionView"
-                        Grid.Row="1"
+                        Grid.Row="2"
                         Margin="10">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
@@ -48,7 +65,7 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <VerticalStackLayout Grid.Row="2" Padding="15" BackgroundColor="#F5F5F5">
+        <VerticalStackLayout Grid.Row="3" Padding="15" BackgroundColor="#F5F5F5">
             <Label x:Name="TotalLabel"
                    Text="الإجمالي: 0 ل.ل"
                    FontAttributes="Bold" FontSize="18"
