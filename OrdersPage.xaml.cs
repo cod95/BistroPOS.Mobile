@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using BistroPOS.Mobile.Services;
 
@@ -8,6 +10,7 @@ public partial class OrdersPage : ContentPage
 {
     private readonly ObservableCollection<OrderViewModel> _orders = new();
     private readonly ApiService _api = new();
+    private HashSet<int> _seenOrderIds = new();
 
     private readonly string[] _statusValues = { "All", "Pending", "Preparing", "Ready", "Completed", "Cancelled" };
     private readonly string[] _statusLabels = { "الكل", "قيد الانتظار", "تحضير", "جاهزة", "مكتملة", "ملغاة" };
@@ -19,12 +22,29 @@ public partial class OrdersPage : ContentPage
 
         StatusPicker.ItemsSource = _statusLabels;
         StatusPicker.SelectedIndex = 0;
+
+        LoadSeenIds();
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         await LoadOrdersAsync();
+    }
+
+    private void LoadSeenIds()
+    {
+        string raw = Preferences.Get("SeenOrderIds", "");
+        _seenOrderIds = raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => int.TryParse(s, out int v) ? v : -1)
+                            .Where(v => v > 0)
+                            .ToHashSet();
+    }
+
+    private void SaveSeenOrderId(int orderId)
+    {
+        _seenOrderIds.Add(orderId);
+        Preferences.Set("SeenOrderIds", string.Join(",", _seenOrderIds));
     }
 
     private async void OnStatusFilterChanged(object sender, EventArgs e)
@@ -50,7 +70,16 @@ public partial class OrdersPage : ContentPage
 
         _orders.Clear();
         foreach (var o in orders)
-            _orders.Add(new OrderViewModel(o));
+            _orders.Add(new OrderViewModel(o, isNew: !_seenOrderIds.Contains(o.OrderId)));
+    }
+
+    private void OnOrderCardTapped(object sender, EventArgs e)
+    {
+        if (sender is Frame frame && frame.BindingContext is OrderViewModel vm)
+        {
+            vm.MarkSeen();
+            SaveSeenOrderId(vm.OrderId);
+        }
     }
 
     private async void OnActionClicked(object sender, EventArgs e)
@@ -126,7 +155,7 @@ public partial class OrdersPage : ContentPage
     }
 }
 
-public class OrderViewModel
+public class OrderViewModel : INotifyPropertyChanged
 {
     public int OrderId { get; }
     public string OrderIdDisplay { get; }
@@ -139,13 +168,23 @@ public class OrderViewModel
     public bool HasAction { get; }
     public bool CanDelete { get; }
 
-    public OrderViewModel(OrderDto dto)
+    private bool _isNew;
+    public bool IsNew
+    {
+        get => _isNew;
+        private set { _isNew = value; OnChanged(nameof(IsNew)); OnChanged(nameof(CardBorderColor)); }
+    }
+
+    public Color CardBorderColor => IsNew ? Color.FromArgb("#E67E22") : Color.FromArgb("#E0E0E0");
+
+    public OrderViewModel(OrderDto dto, bool isNew)
     {
         OrderId = dto.OrderId;
         OrderIdDisplay = $"#{dto.OrderId:D4}";
-        ItemsText = string.Join(", ", dto.Items.Select(i => $"{i.Quantity}x {i.Name}"));
+        ItemsText = string.Join("\n", dto.Items.Select(i => $"{i.Name} {i.Quantity}"));
         TotalText = $"{dto.Total:N0} ل.ل";
         OrderTime = dto.OrderTime;
+        _isNew = isNew;
 
         switch (dto.Status)
         {
@@ -175,4 +214,9 @@ public class OrderViewModel
                 break;
         }
     }
+
+    public void MarkSeen() => IsNew = false;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
