@@ -62,7 +62,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: جلب لائحة الطلبات ============
         public async Task<List<OrderDto>?> GetOrdersAsync(string status = "All", DateTime? date = null)
         {
             try
@@ -79,7 +78,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: تقديم حالة الطلبية ============
         public async Task<AdvanceOrderResponse?> AdvanceOrderAsync(int orderId)
         {
             try
@@ -91,7 +89,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: حذف طلبية ============
         public async Task<DeleteOrderResponse?> DeleteOrderAsync(int orderId)
         {
             try
@@ -103,7 +100,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: تسليم الكل ============
         public async Task<DeliverAllResponse?> DeliverAllAsync()
         {
             try
@@ -114,7 +110,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: يوم جديد ============
         public async Task<bool> NewDayAsync()
         {
             try
@@ -163,6 +158,7 @@ namespace BistroPOS.Mobile.Services
     {
         public string? TableNumber { get; set; }
         public string? Notes { get; set; }
+        public decimal Discount { get; set; }
         public List<OrderItemRequest> Items { get; set; } = new();
     }
 
