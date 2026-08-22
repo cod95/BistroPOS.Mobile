@@ -21,4 +21,9 @@ public partial class MainPage : ContentPage
         Preferences.Clear();
         await Shell.Current.GoToAsync("//LoginPage");
     }
+
+    private async void OnNewOrderClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//OrderPage");
+    }
 }
