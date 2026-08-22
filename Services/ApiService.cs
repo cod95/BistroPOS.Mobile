@@ -39,7 +39,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: جلب المينيو ============
         public async Task<List<MenuItemDto>?> GetMenuAsync()
         {
             try
@@ -52,7 +51,6 @@ namespace BistroPOS.Mobile.Services
             catch { return null; }
         }
 
-        // ============ جديد: إرسال طلبية ============
         public async Task<CreateOrderResponse?> CreateOrderAsync(CreateOrderRequest order)
         {
             try
@@ -62,6 +60,69 @@ namespace BistroPOS.Mobile.Services
                 return await response.Content.ReadFromJsonAsync<CreateOrderResponse>();
             }
             catch { return null; }
+        }
+
+        // ============ جديد: جلب لائحة الطلبات ============
+        public async Task<List<OrderDto>?> GetOrdersAsync(string status = "All", DateTime? date = null)
+        {
+            try
+            {
+                string url = $"/api/orders?status={Uri.EscapeDataString(status)}";
+                if (date.HasValue)
+                    url += $"&date={date.Value:yyyy-MM-dd}";
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<OrdersResponse>();
+                return result?.Orders;
+            }
+            catch { return null; }
+        }
+
+        // ============ جديد: تقديم حالة الطلبية ============
+        public async Task<AdvanceOrderResponse?> AdvanceOrderAsync(int orderId)
+        {
+            try
+            {
+                var request = new { orderId };
+                var response = await _httpClient.PostAsJsonAsync("/api/order/advance", request);
+                return await response.Content.ReadFromJsonAsync<AdvanceOrderResponse>();
+            }
+            catch { return null; }
+        }
+
+        // ============ جديد: حذف طلبية ============
+        public async Task<DeleteOrderResponse?> DeleteOrderAsync(int orderId)
+        {
+            try
+            {
+                var request = new { orderId };
+                var response = await _httpClient.PostAsJsonAsync("/api/order/delete", request);
+                return await response.Content.ReadFromJsonAsync<DeleteOrderResponse>();
+            }
+            catch { return null; }
+        }
+
+        // ============ جديد: تسليم الكل ============
+        public async Task<DeliverAllResponse?> DeliverAllAsync()
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync("/api/orders/deliver-all", null);
+                return await response.Content.ReadFromJsonAsync<DeliverAllResponse>();
+            }
+            catch { return null; }
+        }
+
+        // ============ جديد: يوم جديد ============
+        public async Task<bool> NewDayAsync()
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync("/api/orders/new-day", null);
+                return response.IsSuccessStatusCode;
+            }
+            catch { return false; }
         }
     }
 
@@ -110,5 +171,48 @@ namespace BistroPOS.Mobile.Services
         public bool Success { get; set; }
         public int OrderId { get; set; }
         public string? Message { get; set; }
+    }
+
+    public class OrderItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+
+    public class OrderDto
+    {
+        public int OrderId { get; set; }
+        public string TableNumber { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public List<OrderItemDto> Items { get; set; } = new();
+        public decimal Total { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string OrderTime { get; set; } = string.Empty;
+    }
+
+    public class OrdersResponse
+    {
+        public bool Success { get; set; }
+        public List<OrderDto> Orders { get; set; } = new();
+    }
+
+    public class AdvanceOrderResponse
+    {
+        public bool Success { get; set; }
+        public string? NewStatus { get; set; }
+        public string? Message { get; set; }
+    }
+
+    public class DeleteOrderResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+    }
+
+    public class DeliverAllResponse
+    {
+        public bool Success { get; set; }
+        public int Count { get; set; }
+        public decimal Total { get; set; }
     }
 }
