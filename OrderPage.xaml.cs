@@ -71,6 +71,11 @@ public partial class OrderPage : ContentPage
         TotalLabel.Text = $"الإجمالي: {total:N0} ل.ل";
     }
 
+    private async void OnBackClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//MainPage");
+    }
+
     private async void OnSubmitOrderClicked(object sender, EventArgs e)
     {
         var selectedItems = _menuItems.Where(i => i.Quantity > 0).ToList();
