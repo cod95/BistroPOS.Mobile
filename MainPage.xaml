@@ -17,13 +17,12 @@
                 BackgroundColor="#FF6B00"
                 TextColor="White"
                 FontAttributes="Bold"
-                Margin="0,10,0,0"/>
-               Clicked="OnNewOrderClicked"/>
-        <Button Text="طلبية جديدة"
-        BackgroundColor="#FF6B00"
-        TextColor="White"
-        FontAttributes="Bold"
-        Margin="0,10,0,0"
-        Clicked="OnNewOrderClicked"/>
+                Margin="0,10,0,0"
+                Clicked="OnNewOrderClicked"/>
+        <Button Text="تسجيل خروج"
+                BackgroundColor="#444444"
+                TextColor="White"
+                Margin="0,10,0,0"
+                Clicked="OnLogoutClicked"/>
     </StackLayout>
 </ContentPage>
