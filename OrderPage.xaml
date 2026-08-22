@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="BistroPOS.Mobile.OrdersPage"
-             Title="الطلبات">
+             x:Class="BistroPOS.Mobile.OrderPage"
+             Title="طلبية جديدة">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <Button Grid.Row="0"
                 Text="← رجوع للرئيسية"
@@ -13,100 +13,69 @@
                 Margin="10,10,10,0"
                 Clicked="OnBackClicked"/>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="10,10,10,0">
-            <Picker x:Name="StatusPicker"
-                    Grid.Column="0"
-                    Title="فلترة بالحالة"
-                    SelectedIndexChanged="OnStatusFilterChanged"/>
-            <Button Grid.Column="1"
-                    Text="تحديث"
-                    BackgroundColor="#444444"
-                    TextColor="White"
-                    Margin="10,0,0,0"
-                    Clicked="OnRefreshClicked"/>
-        </Grid>
+        <VerticalStackLayout Grid.Row="1" Padding="10,10,10,0" Spacing="8">
+            <HorizontalStackLayout Spacing="10">
+                <Switch x:Name="DeferredSwitch" Toggled="OnDeferredToggled"/>
+                <Label Text="فاتورة مؤجلة (الزبون لسا ما دفع)"
+                       VerticalOptions="Center"
+                       FontAttributes="Bold"/>
+            </HorizontalStackLayout>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="10,10,10,0" ColumnSpacing="10">
-            <Button Grid.Column="0"
-                    Text="تسليم الكل"
-                    BackgroundColor="#1E8C3C"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    Clicked="OnDeliverAllClicked"/>
-            <Button Grid.Column="1"
-                    Text="يوم جديد"
-                    BackgroundColor="#3C78B4"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    Clicked="OnNewDayClicked"/>
-        </Grid>
+            <Entry x:Name="TableEntry"
+                   Placeholder="اسم الزبون أو رقم الطاولة"
+                   IsVisible="False"/>
 
-        <CollectionView x:Name="OrdersCollectionView"
-                        Grid.Row="3"
+            <Entry x:Name="DiscountEntry"
+                   Placeholder="الحسم بالليرة (اختياري)"
+                   Keyboard="Numeric"/>
+        </VerticalStackLayout>
+
+        <CollectionView x:Name="MenuCollectionView"
+                        Grid.Row="2"
                         Margin="10">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame Margin="0,5" Padding="12" CornerRadius="8"
-                           BorderColor="{Binding CardBorderColor}">
-                        <Frame.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnOrderCardTapped"/>
-                        </Frame.GestureRecognizers>
-                        <VerticalStackLayout Spacing="4">
+                    <Grid Padding="10" ColumnDefinitions="*,Auto,Auto,Auto"
+                          RowDefinitions="Auto,Auto">
 
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Label Grid.Column="0"
-                                       Text="جديد"
-                                       IsVisible="{Binding IsNew}"
-                                       BackgroundColor="#E67E22"
-                                       TextColor="White"
-                                       FontAttributes="Bold"
-                                       FontSize="11"
-                                       Padding="6,2"
-                                       Margin="0,0,6,0"
-                                       VerticalOptions="Center"/>
-                                <Label Grid.Column="1"
-                                       Text="{Binding OrderIdDisplay}"
-                                       FontAttributes="Bold" FontSize="16"/>
-                                <Label Grid.Column="2"
-                                       Text="{Binding StatusText}"
-                                       TextColor="{Binding StatusColor}"
-                                       FontAttributes="Bold"/>
-                            </Grid>
+                        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"
+                               Text="{Binding Name}"
+                               FontAttributes="Bold" FontSize="16"/>
 
-                            <Label Text="{Binding ItemsText}"
-                                   FontSize="13" TextColor="#555555"/>
+                        <Label Grid.Row="1" Grid.Column="0"
+                               Text="{Binding Price, StringFormat='{0:N0} ل.ل'}"
+                               VerticalOptions="Center"/>
 
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Label Grid.Column="0"
-                                       Text="{Binding TotalText}"
-                                       FontAttributes="Bold"/>
-                                <Label Grid.Column="1"
-                                       Text="{Binding OrderTime}"
-                                       FontSize="12" TextColor="Gray"/>
-                            </Grid>
+                        <Button Grid.Row="1" Grid.Column="1"
+                                Text="-" WidthRequest="40"
+                                Clicked="OnDecreaseClicked"/>
 
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <Button Grid.Column="0"
-                                        Text="{Binding ActionText}"
-                                        IsVisible="{Binding HasAction}"
-                                        BackgroundColor="#BA7517"
-                                        TextColor="White"
-                                        FontAttributes="Bold"
-                                        Clicked="OnActionClicked"/>
-                                <Button Grid.Column="1"
-                                        Text="حذف"
-                                        IsVisible="{Binding CanDelete}"
-                                        BackgroundColor="#FFEBEB"
-                                        TextColor="#A01E1E"
-                                        Margin="6,0,0,0"
-                                        Clicked="OnDeleteClicked"/>
-                            </Grid>
+                        <Label Grid.Row="1" Grid.Column="2"
+                               Text="{Binding Quantity}"
+                               WidthRequest="30"
+                               HorizontalTextAlignment="Center"
+                               VerticalOptions="Center"/>
 
-                        </VerticalStackLayout>
-                    </Frame>
+                        <Button Grid.Row="1" Grid.Column="3"
+                                Text="+" WidthRequest="40"
+                                BackgroundColor="#FF6B00" TextColor="White"
+                                Clicked="OnIncreaseClicked"/>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <VerticalStackLayout Grid.Row="3" Padding="15" BackgroundColor="#F5F5F5">
+            <Label x:Name="TotalLabel"
+                   Text="الإجمالي: 0 ل.ل"
+                   FontAttributes="Bold" FontSize="18"
+                   HorizontalOptions="Center"/>
+
+            <Button Text="إرسال الطلبية"
+                    BackgroundColor="#FF6B00" TextColor="White"
+                    FontAttributes="Bold" Margin="0,10,0,0"
+                    Clicked="OnSubmitOrderClicked"/>
+        </VerticalStackLayout>
 
     </Grid>
 </ContentPage>
