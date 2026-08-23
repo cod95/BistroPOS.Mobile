@@ -91,6 +91,7 @@ public partial class LoginPage : ContentPage
                 Preferences.Set("Username", result.Username);
                 Preferences.Set("FullName", result.FullName);
                 Preferences.Set("Role", result.Role);
+                Preferences.Set("ApiToken", result.Token);
                 await Shell.Current.GoToAsync("//MainPage");
             }
             else
