@@ -73,6 +73,12 @@
                                        FontAttributes="Bold"/>
                             </Grid>
 
+                            <Label Text="{Binding TableInfo}"
+                                   IsVisible="{Binding HasTableInfo}"
+                                   FontAttributes="Bold"
+                                   TextColor="#1E64B4"
+                                   FontSize="13"/>
+
                             <Label Text="{Binding ItemsText}"
                                    FontSize="13" TextColor="#555555"/>
 
