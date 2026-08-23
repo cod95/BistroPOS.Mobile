@@ -1,6 +1,7 @@
 using BistroPOS.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using Plugin.LocalNotification;
+using Plugin.LocalNotification.AndroidOption;
 
 namespace BistroPOS.Mobile
 {
