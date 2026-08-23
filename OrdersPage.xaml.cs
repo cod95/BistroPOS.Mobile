@@ -64,7 +64,7 @@ public partial class OrdersPage : ContentPage
 
         if (orders == null)
         {
-            await DisplayAlert("خطأ", "لم يتم جلب لائحة الطلبات من السيرفر", "حسناً");
+        await DisplayAlert("خطأ", $"لم يتم جلب لائحة الطلبات من السيرفر\n{_api.LastError}", "حسناً");
             return;
         }
 
