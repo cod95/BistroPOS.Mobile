@@ -3,24 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="BistroPOS.Mobile.LoginPage"
              Title="تسجيل الدخول">
-
     <StackLayout Padding="30" VerticalOptions="Center">
-
         <Label Text="BistroPOS"
                FontSize="30"
                FontAttributes="Bold"
                HorizontalOptions="Center"
                TextColor="#FF6B00"/>
-
         <Entry x:Name="UsernameEntry"
                Placeholder="اسم المستخدم"
                Margin="0,20,0,0"/>
-
         <Entry x:Name="PasswordEntry"
                Placeholder="كلمة المرور"
                IsPassword="True"
                Margin="0,10,0,0"/>
-
         <Button x:Name="LoginButton"
                 Text="تسجيل الدخول"
                 BackgroundColor="#FF6B00"
@@ -29,6 +24,33 @@
                 Margin="0,20,0,0"
                 Clicked="OnLoginClicked"/>
 
-    </StackLayout>
+        <Label x:Name="ConnectionStatusLabel"
+               Text="جاري البحث عن السيرفر..."
+               FontSize="12"
+               TextColor="Gray"
+               HorizontalOptions="Center"
+               Margin="0,15,0,0"/>
 
+        <Label x:Name="ChangeServerLink"
+               Text="تغيير عنوان السيرفر يدوياً"
+               FontSize="12"
+               TextColor="#3C78B4"
+               HorizontalOptions="Center"
+               Margin="0,5,0,0">
+            <Label.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnChangeServerTapped"/>
+            </Label.GestureRecognizers>
+        </Label>
+
+        <VerticalStackLayout x:Name="ManualServerPanel"
+                              IsVisible="False"
+                              Spacing="8"
+                              Margin="0,10,0,0">
+            <Entry x:Name="ManualIpEntry" Placeholder="مثال: 192.168.1.25"/>
+            <Button Text="حفظ والاتصال"
+                    BackgroundColor="#3C78B4"
+                    TextColor="White"
+                    Clicked="OnSaveManualIpClicked"/>
+        </VerticalStackLayout>
+    </StackLayout>
 </ContentPage>
