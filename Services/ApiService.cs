@@ -1,22 +1,68 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BistroPOS.Mobile.Services
 {
     public class ApiService
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _baseUrl;
+        private readonly HttpClient _httpClient = new();
+        private const int DiscoveryPort = 5051;
+        private const int ApiPort = 5050;
 
         public string? LastError { get; private set; }
+        public string BaseUrl { get; private set; }
 
         public ApiService()
         {
-            _baseUrl = "http://192.168.0.122:5050";
-            _httpClient = new HttpClient { BaseAddress = new Uri(_baseUrl) };
+            string savedIp = Preferences.Get("ServerIp", "192.168.0.122");
+            BaseUrl = $"http://{savedIp}:{ApiPort}";
+            _httpClient.BaseAddress = new Uri(BaseUrl);
+        }
+
+        public async Task<bool> DiscoverServerAsync()
+        {
+            try
+            {
+                using var udp = new UdpClient();
+                udp.EnableBroadcast = true;
+
+                byte[] message = Encoding.UTF8.GetBytes("BISTROPOS_DISCOVER");
+                var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DiscoveryPort);
+                await udp.SendAsync(message, message.Length, broadcastEndpoint);
+
+                var receiveTask = udp.ReceiveAsync();
+                var timeoutTask = Task.Delay(2500);
+                var completed = await Task.WhenAny(receiveTask, timeoutTask);
+
+                if (completed == receiveTask)
+                {
+                    var result = receiveTask.Result;
+                    string reply = Encoding.UTF8.GetString(result.Buffer);
+                    if (reply == "BISTROPOS_HERE")
+                    {
+                        string ip = result.RemoteEndPoint.Address.ToString();
+                        Preferences.Set("ServerIp", ip);
+                        BaseUrl = $"http://{ip}:{ApiPort}";
+                        _httpClient.BaseAddress = new Uri(BaseUrl);
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        public void SetManualServerIp(string ip)
+        {
+            Preferences.Set("ServerIp", ip);
+            BaseUrl = $"http://{ip}:{ApiPort}";
+            _httpClient.BaseAddress = new Uri(BaseUrl);
         }
 
         public async Task<bool> PingAsync()
