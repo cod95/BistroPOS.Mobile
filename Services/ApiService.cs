@@ -15,7 +15,7 @@ namespace BistroPOS.Mobile.Services
 
         public ApiService()
         {
-            _baseUrl = "http://192.168.100.32:5050";
+            _baseUrl = "http://192.168.0.122:5050";
             _httpClient = new HttpClient { BaseAddress = new Uri(_baseUrl) };
         }
 
