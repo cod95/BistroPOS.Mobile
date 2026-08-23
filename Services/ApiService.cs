@@ -11,6 +11,8 @@ namespace BistroPOS.Mobile.Services
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
 
+        public string? LastError { get; private set; }
+
         public ApiService()
         {
             _baseUrl = "http://192.168.100.32:5050";
@@ -71,11 +73,20 @@ namespace BistroPOS.Mobile.Services
                     url += $"&date={date.Value:yyyy-MM-dd}";
 
                 var response = await _httpClient.GetAsync(url);
-                if (!response.IsSuccessStatusCode) return null;
+                if (!response.IsSuccessStatusCode)
+                {
+                    LastError = $"HTTP {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}";
+                    return null;
+                }
                 var result = await response.Content.ReadFromJsonAsync<OrdersResponse>();
+                LastError = null;
                 return result?.Orders;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                LastError = ex.Message;
+                return null;
+            }
         }
 
         public async Task<AdvanceOrderResponse?> AdvanceOrderAsync(int orderId)
