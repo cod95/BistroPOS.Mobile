@@ -11,6 +11,7 @@ public partial class OrdersPage : ContentPage
     private readonly ObservableCollection<OrderViewModel> _orders = new();
     private readonly ApiService _api = new();
     private HashSet<int> _seenOrderIds = new();
+    private IDispatcherTimer? _refreshTimer;
 
     private readonly string[] _statusValues = { "All", "Pending", "Preparing", "Ready", "Completed", "Cancelled" };
     private readonly string[] _statusLabels = { "الكل", "قيد الانتظار", "تحضير", "جاهزة", "مكتملة", "ملغاة" };
@@ -30,6 +31,22 @@ public partial class OrdersPage : ContentPage
     {
         base.OnAppearing();
         await LoadOrdersAsync();
+        StartAutoRefresh();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _refreshTimer?.Stop();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer?.Stop();
+        _refreshTimer = Dispatcher.CreateTimer();
+        _refreshTimer.Interval = TimeSpan.FromSeconds(5);
+        _refreshTimer.Tick += async (s, e) => await LoadOrdersAsync();
+        _refreshTimer.Start();
     }
 
     private void LoadSeenIds()
@@ -64,7 +81,6 @@ public partial class OrdersPage : ContentPage
 
         if (orders == null)
         {
-        await DisplayAlert("خطأ", $"لم يتم جلب لائحة الطلبات من السيرفر\n{_api.LastError}", "حسناً");
             return;
         }
 
