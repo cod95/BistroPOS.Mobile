@@ -64,7 +64,7 @@ public partial class OrdersPage : ContentPage
 
         if (orders == null)
         {
-            await DisplayAlert("خطأ", "ما قدرنا نجيب لائحة الطلبات من السيرفر", "حسناً");
+            await DisplayAlert("خطأ", "لم يتم جلب لائحة الطلبات من السيرفر", "حسناً");
             return;
         }
 
@@ -93,7 +93,7 @@ public partial class OrdersPage : ContentPage
         }
         else
         {
-            await DisplayAlert("خطأ", result?.Message ?? "صار خطأ بتحديث الطلبية", "حسناً");
+            await DisplayAlert("خطأ", result?.Message ?? "خطأ بتحديث الطلبية", "حسناً");
         }
     }
 
@@ -111,13 +111,13 @@ public partial class OrdersPage : ContentPage
         }
         else
         {
-            await DisplayAlert("خطأ", result?.Message ?? "صار خطأ بحذف الطلبية", "حسناً");
+            await DisplayAlert("خطأ", result?.Message ?? "خطأ بحذف الطلبية", "حسناً");
         }
     }
 
     private async void OnDeliverAllClicked(object sender, EventArgs e)
     {
-        bool confirm = await DisplayAlert("تأكيد", "تسليم كل الطلبات النشطة؟", "نعم", "لأ");
+        bool confirm = await DisplayAlert("تأكيد", "تسليم كل الطلبات النشطة؟", "نعم", "لا");
         if (!confirm) return;
 
         var result = await _api.DeliverAllAsync();
@@ -145,7 +145,7 @@ public partial class OrdersPage : ContentPage
         }
         else
         {
-            await DisplayAlert("خطأ", "صار خطأ بتنفيذ يوم جديد", "حسناً");
+            await DisplayAlert("خطأ", "خطأ بتنفيذ يوم جديد", "حسناً");
         }
     }
 
@@ -159,6 +159,8 @@ public class OrderViewModel : INotifyPropertyChanged
 {
     public int OrderId { get; }
     public string OrderIdDisplay { get; }
+    public string? TableInfo { get; }
+    public bool HasTableInfo { get; }
     public string ItemsText { get; }
     public string TotalText { get; }
     public string StatusText { get; }
@@ -181,6 +183,18 @@ public class OrderViewModel : INotifyPropertyChanged
     {
         OrderId = dto.OrderId;
         OrderIdDisplay = $"#{dto.OrderId:D4}";
+
+        if (!string.IsNullOrWhiteSpace(dto.TableNumber) && dto.TableNumber != "طلبية موبايل")
+        {
+            TableInfo = $"🪑 {dto.TableNumber}";
+            HasTableInfo = true;
+        }
+        else
+        {
+            TableInfo = null;
+            HasTableInfo = false;
+        }
+
         ItemsText = string.Join("\n", dto.Items.Select(i => $"{i.Name} {i.Quantity}"));
         TotalText = $"{dto.Total:N0} ل.ل";
         OrderTime = dto.OrderTime;
