@@ -23,6 +23,10 @@ namespace BistroPOS.Mobile.Services
             string savedIp = Preferences.Get("ServerIp", "192.168.0.122");
             BaseUrl = $"http://{savedIp}:{ApiPort}";
             _httpClient.BaseAddress = new Uri(BaseUrl);
+
+            string token = Preferences.Get("ApiToken", "");
+            if (!string.IsNullOrWhiteSpace(token))
+                _httpClient.DefaultRequestHeaders.Add("X-Api-Token", token);
         }
 
         public async Task<bool> DiscoverServerAsync()
@@ -189,6 +193,7 @@ namespace BistroPOS.Mobile.Services
         public string Username { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
     }
 
     public class MenuItemDto
