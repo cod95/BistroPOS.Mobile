@@ -43,15 +43,15 @@ public partial class MainPage : ContentPage
         _isPollingStarted = true;
 
         _pollTimer = Dispatcher.CreateTimer();
-        _pollTimer.Interval = TimeSpan.FromSeconds(20);
+        _pollTimer.Interval = TimeSpan.FromSeconds(15);
         _pollTimer.Tick += async (s, e) => await CheckForNewOrdersAsync();
         _pollTimer.Start();
     }
 
     private async Task CheckForNewOrdersAsync()
     {
-        var pending = await _api.GetOrdersAsync("Pending");
-        if (pending == null) return;
+        var all = await _api.GetOrdersAsync("All");
+        if (all == null) return;
 
         string raw = Preferences.Get("NotifiedOrderIds", "");
         var notified = raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
@@ -59,21 +59,29 @@ public partial class MainPage : ContentPage
                            .Where(v => v > 0)
                            .ToHashSet();
 
+        bool isFirstRun = !Preferences.Get("NotificationBaselineSet", false);
+
         bool changed = false;
-        foreach (var order in pending)
+        foreach (var order in all)
         {
+            if (order.Status == "Cancelled") continue;
             if (!notified.Contains(order.OrderId))
             {
-                await ShowOrderNotificationAsync(order);
+                if (!isFirstRun)
+                    await ShowOrderNotificationAsync(order);
                 notified.Add(order.OrderId);
                 changed = true;
             }
         }
 
+        if (isFirstRun)
+            Preferences.Set("NotificationBaselineSet", true);
+
         if (changed)
             Preferences.Set("NotifiedOrderIds", string.Join(",", notified));
 
-        OrdersButton.Text = pending.Count > 0 ? $"الطلبات ({pending.Count})" : "الطلبات";
+        int pendingCount = all.Count(o => o.Status == "Pending");
+        OrdersButton.Text = pendingCount > 0 ? $"الطلبات ({pendingCount})" : "الطلبات";
     }
 
     private async Task ShowOrderNotificationAsync(OrderDto order)
@@ -84,10 +92,19 @@ public partial class MainPage : ContentPage
                 ? $" - {order.TableNumber}" : "";
             string itemsText = string.Join(", ", order.Items.Select(i => $"{i.Name} {i.Quantity}"));
 
+            string statusLabel = order.Status switch
+            {
+                "Completed" => "مكتملة (مدفوعة)",
+                "Pending" => "جديدة",
+                "Preparing" => "قيد التحضير",
+                "Ready" => "جاهزة",
+                _ => order.Status
+            };
+
             var request = new NotificationRequest
             {
                 NotificationId = order.OrderId,
-                Title = $"طلبية جديدة #{order.OrderId:D4}{tableInfo}",
+                Title = $"طلبية {statusLabel} #{order.OrderId:D4}{tableInfo}",
                 Description = itemsText
             };
 
