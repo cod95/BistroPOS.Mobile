@@ -22,8 +22,8 @@ public partial class MainPage : ContentPage
         WelcomeLabel.Text = $"مرحباً {fullName}";
         RoleLabel.Text = $"الدور: {role}";
 
-        await UpdatePendingCountAsync();
         await RequestNotificationPermissionAsync();
+        await CheckForNewOrdersAsync();
         StartNotificationPolling();
     }
 
@@ -43,7 +43,7 @@ public partial class MainPage : ContentPage
         _isPollingStarted = true;
 
         _pollTimer = Dispatcher.CreateTimer();
-        _pollTimer.Interval = TimeSpan.FromSeconds(15);
+        _pollTimer.Interval = TimeSpan.FromSeconds(5);
         _pollTimer.Tick += async (s, e) => await CheckForNewOrdersAsync();
         _pollTimer.Start();
     }
@@ -53,8 +53,8 @@ public partial class MainPage : ContentPage
         var all = await _api.GetOrdersAsync("All");
         if (all == null) return;
 
-        string raw = Preferences.Get("NotifiedOrderIds", "");
-        var notified = raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        string notifiedRaw = Preferences.Get("NotifiedOrderIds", "");
+        var notified = notifiedRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
                            .Select(s => int.TryParse(s, out int v) ? v : -1)
                            .Where(v => v > 0)
                            .ToHashSet();
@@ -80,8 +80,19 @@ public partial class MainPage : ContentPage
         if (changed)
             Preferences.Set("NotifiedOrderIds", string.Join(",", notified));
 
-        int pendingCount = all.Count(o => o.Status == "Pending");
-        OrdersButton.Text = pendingCount > 0 ? $"الطلبات ({pendingCount})" : "الطلبات";
+        UpdateUnseenBadge(all);
+    }
+
+    private void UpdateUnseenBadge(List<OrderDto> all)
+    {
+        string seenRaw = Preferences.Get("SeenOrderIds", "");
+        var seen = seenRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                           .Select(s => int.TryParse(s, out int v) ? v : -1)
+                           .Where(v => v > 0)
+                           .ToHashSet();
+
+        int unseenCount = all.Count(o => o.Status != "Cancelled" && !seen.Contains(o.OrderId));
+        OrdersButton.Text = unseenCount > 0 ? $"الطلبات ({unseenCount})" : "الطلبات";
     }
 
     private async Task ShowOrderNotificationAsync(OrderDto order)
@@ -111,13 +122,6 @@ public partial class MainPage : ContentPage
             await LocalNotificationCenter.Current.Show(request);
         }
         catch { }
-    }
-
-    private async Task UpdatePendingCountAsync()
-    {
-        var pending = await _api.GetOrdersAsync("Pending");
-        int count = pending?.Count ?? 0;
-        OrdersButton.Text = count > 0 ? $"الطلبات ({count})" : "الطلبات";
     }
 
     private async void OnLogoutClicked(object sender, EventArgs e)
