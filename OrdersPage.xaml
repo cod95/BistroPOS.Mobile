@@ -27,13 +27,15 @@
         </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="10,10,10,0" ColumnSpacing="10">
-            <Button Grid.Column="0"
+            <Button x:Name="DeliverAllButton"
+                    Grid.Column="0"
                     Text="تسليم الكل"
                     BackgroundColor="#1E8C3C"
                     TextColor="White"
                     FontAttributes="Bold"
                     Clicked="OnDeliverAllClicked"/>
-            <Button Grid.Column="1"
+            <Button x:Name="NewDayButton"
+                    Grid.Column="1"
                     Text="يوم جديد"
                     BackgroundColor="#3C78B4"
                     TextColor="White"
