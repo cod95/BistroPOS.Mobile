@@ -25,6 +25,17 @@ public partial class OrdersPage : ContentPage
         StatusPicker.SelectedIndex = 0;
 
         LoadSeenIds();
+        ApplyRolePermissions();
+    }
+
+    private void ApplyRolePermissions()
+    {
+        string role = Preferences.Get("Role", "");
+        if (role != "Admin")
+        {
+            NewDayButton.IsVisible = false;
+            Grid.SetColumnSpan(DeliverAllButton, 2);
+        }
     }
 
     protected override async void OnAppearing()
