@@ -12,6 +12,7 @@ public partial class OrdersPage : ContentPage
     private readonly ApiService _api = new();
     private HashSet<int> _seenOrderIds = new();
     private IDispatcherTimer? _refreshTimer;
+    private bool _isAdmin;
 
     private readonly string[] _statusValues = { "All", "Pending", "Preparing", "Ready", "Completed", "Cancelled" };
     private readonly string[] _statusLabels = { "الكل", "قيد الانتظار", "تحضير", "جاهزة", "مكتملة", "ملغاة" };
@@ -31,7 +32,8 @@ public partial class OrdersPage : ContentPage
     private void ApplyRolePermissions()
     {
         string role = Preferences.Get("Role", "");
-        if (role != "Admin")
+        _isAdmin = role == "Admin";
+        if (!_isAdmin)
         {
             NewDayButton.IsVisible = false;
             Grid.SetColumnSpan(DeliverAllButton, 2);
@@ -97,7 +99,7 @@ public partial class OrdersPage : ContentPage
 
         _orders.Clear();
         foreach (var o in orders)
-            _orders.Add(new OrderViewModel(o, isNew: !_seenOrderIds.Contains(o.OrderId)));
+            _orders.Add(new OrderViewModel(o, isNew: !_seenOrderIds.Contains(o.OrderId), isAdmin: _isAdmin));
     }
 
     private void OnOrderCardTapped(object sender, EventArgs e)
@@ -206,7 +208,7 @@ public class OrderViewModel : INotifyPropertyChanged
 
     public Color CardBorderColor => IsNew ? Color.FromArgb("#E67E22") : Color.FromArgb("#E0E0E0");
 
-    public OrderViewModel(OrderDto dto, bool isNew)
+    public OrderViewModel(OrderDto dto, bool isNew, bool isAdmin)
     {
         OrderId = dto.OrderId;
         OrderIdDisplay = $"#{dto.OrderId:D4}";
@@ -227,33 +229,36 @@ public class OrderViewModel : INotifyPropertyChanged
         OrderTime = dto.OrderTime;
         _isNew = isNew;
 
+        bool canDeleteByStatus;
         switch (dto.Status)
         {
             case "Pending":
                 StatusText = "قيد الانتظار"; StatusColor = Color.FromArgb("#B46400");
-                ActionText = "بدء التحضير"; HasAction = true; CanDelete = true;
+                ActionText = "بدء التحضير"; HasAction = true; canDeleteByStatus = true;
                 break;
             case "Preparing":
                 StatusText = "تحضير"; StatusColor = Color.FromArgb("#1E64B4");
-                ActionText = "جاهز"; HasAction = true; CanDelete = false;
+                ActionText = "جاهز"; HasAction = true; canDeleteByStatus = false;
                 break;
             case "Ready":
                 StatusText = "جاهزة"; StatusColor = Color.FromArgb("#1E8C3C");
-                ActionText = "تسليم"; HasAction = true; CanDelete = false;
+                ActionText = "تسليم"; HasAction = true; canDeleteByStatus = false;
                 break;
             case "Completed":
                 StatusText = "مكتملة"; StatusColor = Colors.Gray;
-                ActionText = null; HasAction = false; CanDelete = true;
+                ActionText = null; HasAction = false; canDeleteByStatus = true;
                 break;
             case "Cancelled":
                 StatusText = "ملغاة"; StatusColor = Color.FromArgb("#A01E1E");
-                ActionText = "استرجاع"; HasAction = true; CanDelete = true;
+                ActionText = "استرجاع"; HasAction = true; canDeleteByStatus = true;
                 break;
             default:
                 StatusText = dto.Status; StatusColor = Colors.Black;
-                ActionText = null; HasAction = false; CanDelete = true;
+                ActionText = null; HasAction = false; canDeleteByStatus = true;
                 break;
         }
+
+        CanDelete = isAdmin && canDeleteByStatus;
     }
 
     public void MarkSeen() => IsNew = false;
