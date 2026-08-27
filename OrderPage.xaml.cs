@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -8,13 +9,17 @@ namespace BistroPOS.Mobile;
 public partial class OrderPage : ContentPage
 {
     private readonly ObservableCollection<MenuItemViewModel> _menuItems = new();
+    private List<MenuItemViewModel> _allMenuItems = new();
     private readonly ApiService _api = new();
+    private string _selectedCategory = "الكل";
+    private readonly List<Button> _categoryButtons = new();
 
     public OrderPage()
     {
         InitializeComponent();
         MenuCollectionView.ItemsSource = _menuItems;
         DiscountEntry.TextChanged += (s, e) => UpdateTotal();
+        SearchEntry.TextChanged += (s, e) => ApplyFilters();
     }
 
     protected override async void OnAppearing()
@@ -33,19 +38,71 @@ public partial class OrderPage : ContentPage
             return;
         }
 
-        _menuItems.Clear();
-        foreach (var item in items)
+        _allMenuItems = items.Select(item => new MenuItemViewModel
         {
-            _menuItems.Add(new MenuItemViewModel
+            ItemId = item.ItemId,
+            Name = item.Name,
+            Category = item.Category,
+            Price = item.Price,
+            Quantity = 0
+        }).ToList();
+
+        BuildCategoryChips();
+        ApplyFilters();
+    }
+
+    private void BuildCategoryChips()
+    {
+        CategoryStack.Children.Clear();
+        _categoryButtons.Clear();
+
+        var categories = new List<string> { "الكل" };
+        categories.AddRange(_allMenuItems.Select(i => i.Category).Distinct().OrderBy(c => c));
+
+        foreach (var category in categories)
+        {
+            var btn = new Button
             {
-                ItemId = item.ItemId,
-                Name = item.Name,
-                Category = item.Category,
-                Price = item.Price,
-                Quantity = 0
-            });
+                Text = category,
+                FontSize = 13,
+                Padding = new Thickness(14, 6),
+                CornerRadius = 18,
+                BackgroundColor = category == _selectedCategory ? Color.FromArgb("#FF6B00") : Color.FromArgb("#EFEFEF"),
+                TextColor = category == _selectedCategory ? Colors.White : Color.FromArgb("#333333")
+            };
+            btn.Clicked += (s, e) =>
+            {
+                _selectedCategory = category;
+                UpdateCategoryButtonStyles();
+                ApplyFilters();
+            };
+            _categoryButtons.Add(btn);
+            CategoryStack.Children.Add(btn);
         }
-        UpdateTotal();
+    }
+
+    private void UpdateCategoryButtonStyles()
+    {
+        foreach (var btn in _categoryButtons)
+        {
+            bool selected = btn.Text == _selectedCategory;
+            btn.BackgroundColor = selected ? Color.FromArgb("#FF6B00") : Color.FromArgb("#EFEFEF");
+            btn.TextColor = selected ? Colors.White : Color.FromArgb("#333333");
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        string search = SearchEntry.Text?.Trim() ?? "";
+
+        var filtered = _allMenuItems.Where(item =>
+            (_selectedCategory == "الكل" || item.Category == _selectedCategory) &&
+            (string.IsNullOrEmpty(search) || item.Name.Contains(search, System.StringComparison.OrdinalIgnoreCase))
+        );
+
+        _menuItems.Clear();
+        foreach (var item in filtered)
+            _menuItems.Add(item);
     }
 
     private void OnIncreaseClicked(object sender, EventArgs e)
@@ -75,7 +132,7 @@ public partial class OrderPage : ContentPage
 
     private void UpdateTotal()
     {
-        decimal subtotal = _menuItems.Sum(i => i.Subtotal);
+        decimal subtotal = _allMenuItems.Sum(i => i.Subtotal);
         decimal.TryParse(DiscountEntry.Text, out decimal discount);
         decimal total = subtotal - discount;
         if (total < 0) total = 0;
@@ -89,7 +146,7 @@ public partial class OrderPage : ContentPage
 
     private async void OnSubmitOrderClicked(object sender, EventArgs e)
     {
-        var selectedItems = _menuItems.Where(i => i.Quantity > 0).ToList();
+        var selectedItems = _allMenuItems.Where(i => i.Quantity > 0).ToList();
 
         if (selectedItems.Count == 0)
         {
