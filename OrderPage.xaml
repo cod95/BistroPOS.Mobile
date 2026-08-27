@@ -4,7 +4,7 @@
              x:Class="BistroPOS.Mobile.OrderPage"
              Title="طلبية جديدة">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
         <Button Grid.Row="0"
                 Text="← رجوع للرئيسية"
@@ -30,8 +30,21 @@
                    Keyboard="Numeric"/>
         </VerticalStackLayout>
 
+        <Entry x:Name="SearchEntry"
+               Grid.Row="2"
+               Placeholder="🔍 بحث عن صنف بالاسم..."
+               Margin="10,10,10,0"/>
+
+        <ScrollView Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalScrollBarVisibility="Never"
+                    Margin="10,8,10,0"
+                    HeightRequest="44">
+            <HorizontalStackLayout x:Name="CategoryStack" Spacing="8"/>
+        </ScrollView>
+
         <CollectionView x:Name="MenuCollectionView"
-                        Grid.Row="2"
+                        Grid.Row="4"
                         Margin="10">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
@@ -65,7 +78,7 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <VerticalStackLayout Grid.Row="3" Padding="15" BackgroundColor="#F5F5F5">
+        <VerticalStackLayout Grid.Row="5" Padding="15" BackgroundColor="#F5F5F5">
             <Label x:Name="TotalLabel"
                    Text="الإجمالي: 0 ل.ل"
                    FontAttributes="Bold" FontSize="18"
