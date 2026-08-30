@@ -22,6 +22,7 @@ public partial class MainPage : ContentPage
         WelcomeLabel.Text = $"مرحباً {fullName}";
         RoleLabel.Text = $"الدور: {role}";
         ReportsButton.IsVisible = role == "Admin";
+        DebtsButton.IsVisible = role == "Admin";
 
         await RequestNotificationPermissionAsync();
         await CheckForNewOrdersAsync();
