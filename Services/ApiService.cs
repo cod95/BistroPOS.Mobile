@@ -180,6 +180,18 @@ namespace BistroPOS.Mobile.Services
             }
             catch { return false; }
         }
+
+        public async Task<ReportsDto?> GetReportsAsync(DateTime from, DateTime to)
+        {
+            try
+            {
+                string url = $"/api/reports?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<ReportsDto>();
+            }
+            catch { return null; }
+        }
     }
 
     // ==========================================
@@ -272,5 +284,31 @@ namespace BistroPOS.Mobile.Services
         public bool Success { get; set; }
         public int Count { get; set; }
         public decimal Total { get; set; }
+    }
+
+    public class CategorySalesDto
+    {
+        public string Category { get; set; } = string.Empty;
+        public int TotalQty { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    public class TopItemDto
+    {
+        public string ItemName { get; set; } = string.Empty;
+        public int TotalSold { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    public class ReportsDto
+    {
+        public bool Success { get; set; }
+        public int TotalOrders { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal AvgOrder { get; set; }
+        public int Completed { get; set; }
+        public int Cancelled { get; set; }
+        public List<CategorySalesDto> SalesByCategory { get; set; } = new();
+        public List<TopItemDto> TopItems { get; set; } = new();
     }
 }
