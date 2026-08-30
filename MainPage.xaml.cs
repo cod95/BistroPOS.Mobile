@@ -147,4 +147,8 @@ public partial class MainPage : ContentPage
     {
         await Shell.Current.GoToAsync("//ReportsPage");
     }
+        private async void OnDebtsClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//DebtsPage");
+    }
 }
