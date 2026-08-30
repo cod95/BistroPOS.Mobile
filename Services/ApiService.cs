@@ -192,6 +192,62 @@ namespace BistroPOS.Mobile.Services
             }
             catch { return null; }
         }
+
+        public async Task<List<DebtCustomerDto>?> GetDebtCustomersAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("/api/debts/customers");
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<DebtCustomersResponse>();
+                return result?.Customers;
+            }
+            catch { return null; }
+        }
+
+        public async Task<CustomerDebtsResponse?> GetCustomerDebtsAsync(string name)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"/api/debts/customer?name={Uri.EscapeDataString(name)}");
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<CustomerDebtsResponse>();
+            }
+            catch { return null; }
+        }
+
+        public async Task<SimpleResponse?> AddDebtCustomerAsync(string name)
+        {
+            try
+            {
+                var request = new { name };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/add-customer", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
+            }
+            catch { return null; }
+        }
+
+        public async Task<SimpleResponse?> DeleteDebtCustomerAsync(string name)
+        {
+            try
+            {
+                var request = new { name };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/delete-customer", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
+            }
+            catch { return null; }
+        }
+
+        public async Task<SimpleResponse?> PayDebtAsync(string customerName, decimal amount)
+        {
+            try
+            {
+                var request = new { customerName, amount };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/pay", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
+            }
+            catch { return null; }
+        }
     }
 
     // ==========================================
@@ -310,5 +366,49 @@ namespace BistroPOS.Mobile.Services
         public int Cancelled { get; set; }
         public List<CategorySalesDto> SalesByCategory { get; set; } = new();
         public List<TopItemDto> TopItems { get; set; } = new();
+    }
+
+    public class DebtCustomerDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public decimal Total { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Remaining { get; set; }
+    }
+
+    public class DebtCustomersResponse
+    {
+        public bool Success { get; set; }
+        public List<DebtCustomerDto> Customers { get; set; } = new();
+    }
+
+    public class DebtItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+
+    public class CustomerDebtDto
+    {
+        public int Id { get; set; }
+        public string Date { get; set; } = string.Empty;
+        public List<DebtItemDto> Items { get; set; } = new();
+        public decimal Total { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Remaining { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
+    public class CustomerDebtsResponse
+    {
+        public bool Success { get; set; }
+        public List<CustomerDebtDto> Debts { get; set; } = new();
+        public decimal TotalRemaining { get; set; }
+    }
+
+    public class SimpleResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
     }
 }
