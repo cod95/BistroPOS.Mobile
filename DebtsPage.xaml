@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BistroPOS.Mobile.DebtsPage"
+             Title="الزبائن والديون">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <Button Grid.Row="0"
+                Text="← رجوع للرئيسية"
+                BackgroundColor="#444444"
+                TextColor="White"
+                Margin="10,10,10,0"
+                Clicked="OnBackClicked"/>
+
+        <!-- شاشة لائحة الزبائن -->
+        <Grid x:Name="CustomerListSection" Grid.Row="1" RowDefinitions="Auto,*">
+
+            <VerticalStackLayout Grid.Row="0" Padding="10,10,10,0" Spacing="8">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Entry x:Name="NewCustomerEntry" Grid.Column="0" Placeholder="اسم زبون جديد"/>
+                    <Button Grid.Column="1" Text="إضافة" BackgroundColor="#BA7517" TextColor="White" FontAttributes="Bold" Clicked="OnAddCustomerClicked"/>
+                </Grid>
+            </VerticalStackLayout>
+
+            <CollectionView x:Name="CustomersCollectionView" Grid.Row="1" Margin="10">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="0,5" Padding="12" CornerRadius="8" BorderColor="#E0E0E0">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCustomerTapped"/>
+                            </Frame.GestureRecognizers>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16"/>
+                                    <Label Text="{Binding RemainingText}" TextColor="{Binding RemainingColor}" FontAttributes="Bold" FontSize="13"/>
+                                </VerticalStackLayout>
+                                <Button Grid.Column="1"
+                                        Text="حذف"
+                                        BackgroundColor="#FFEBEB"
+                                        TextColor="#A01E1E"
+                                        FontSize="12"
+                                        Clicked="OnDeleteCustomerClicked"/>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+        <!-- شاشة تفاصيل ديون الزبون -->
+        <Grid x:Name="CustomerDetailSection" Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" IsVisible="False">
+
+            <Button Grid.Row="0"
+                    Text="← رجوع لقائمة الزبائن"
+                    BackgroundColor="#EFEFEF"
+                    TextColor="#333333"
+                    Margin="10,10,10,0"
+                    Clicked="OnBackToListClicked"/>
+
+            <VerticalStackLayout Grid.Row="1" Padding="10" Spacing="4">
+                <Label x:Name="SelectedCustomerLabel" FontAttributes="Bold" FontSize="18"/>
+                <Label x:Name="TotalRemainingLabel" TextColor="#BA7517" FontAttributes="Bold" FontSize="15"/>
+            </VerticalStackLayout>
+
+            <CollectionView x:Name="DebtsCollectionView" Grid.Row="2" Margin="10">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="0,4" Padding="10" CornerRadius="6" BorderColor="#E0E0E0">
+                            <VerticalStackLayout Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="{Binding Date}" FontSize="12" TextColor="Gray"/>
+                                    <Label Grid.Column="1" Text="{Binding StatusText}" TextColor="{Binding StatusColor}" FontAttributes="Bold" FontSize="12"/>
+                                </Grid>
+                                <Label Text="{Binding ItemsText}" FontSize="13"/>
+                                <Label Text="{Binding AmountsText}" FontSize="13" FontAttributes="Bold"/>
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <VerticalStackLayout Grid.Row="3" Padding="15" BackgroundColor="#F5F5F5" Spacing="8">
+                <Entry x:Name="PaymentAmountEntry" Placeholder="مبلغ الدفعة" Keyboard="Numeric"/>
+                <Button Text="💰 تسجيل دفعة"
+                        BackgroundColor="#1E8C3C"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        Clicked="OnPayClicked"/>
+            </VerticalStackLayout>
+        </Grid>
+
+    </Grid>
+</ContentPage>
