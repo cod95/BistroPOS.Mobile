@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BistroPOS.Mobile.ReportsPage"
+             Title="التقارير">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="10" Spacing="12">
+
+            <Button Text="← رجوع للرئيسية"
+                    BackgroundColor="#444444"
+                    TextColor="White"
+                    Clicked="OnBackClicked"/>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label Text="من" FontSize="12" TextColor="Gray"/>
+                    <DatePicker x:Name="FromDatePicker"/>
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="إلى" FontSize="12" TextColor="Gray"/>
+                    <DatePicker x:Name="ToDatePicker"/>
+                </VerticalStackLayout>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Button Grid.Column="0" Text="اليوم" BackgroundColor="#EFEFEF" TextColor="#333333" FontSize="13" Clicked="OnTodayClicked"/>
+                <Button Grid.Column="1" Text="هذا الشهر" BackgroundColor="#EFEFEF" TextColor="#333333" FontSize="13" Clicked="OnThisMonthClicked"/>
+                <Button Grid.Column="2" Text="توليد" BackgroundColor="#BA7517" TextColor="White" FontAttributes="Bold" Clicked="OnGenerateClicked"/>
+            </Grid>
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False" Color="#FF6B00"/>
+
+            <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                <HorizontalStackLayout x:Name="MetricsStack" Spacing="10"/>
+            </ScrollView>
+
+            <Label Text="المبيعات حسب القسم" FontAttributes="Bold" FontSize="16" Margin="0,10,0,0"/>
+            <CollectionView x:Name="CategoryCollectionView" HeightRequest="200">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="10,6" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <Label Grid.Column="0" Text="{Binding Category}" FontAttributes="Bold"/>
+                            <Label Grid.Column="1" Text="{Binding QtyText}" TextColor="Gray" FontSize="13" VerticalOptions="Center"/>
+                            <Label Grid.Column="2" Text="{Binding RevenueText}" TextColor="#1E8C3C" FontAttributes="Bold" VerticalOptions="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="الأكثر مبيعاً" FontAttributes="Bold" FontSize="16" Margin="0,10,0,0"/>
+            <CollectionView x:Name="TopItemsCollectionView" HeightRequest="280">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="10,6" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                            <Label Grid.Column="0" Text="{Binding RankText}" FontAttributes="Bold" TextColor="#BA7517" WidthRequest="24"/>
+                            <Label Grid.Column="1" Text="{Binding ItemName}"/>
+                            <Label Grid.Column="2" Text="{Binding QtyText}" TextColor="Gray" FontSize="13" VerticalOptions="Center"/>
+                            <Label Grid.Column="3" Text="{Binding RevenueText}" TextColor="#1E8C3C" FontAttributes="Bold" VerticalOptions="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
