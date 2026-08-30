@@ -21,6 +21,7 @@ public partial class MainPage : ContentPage
         var role = Preferences.Get("Role", "");
         WelcomeLabel.Text = $"مرحباً {fullName}";
         RoleLabel.Text = $"الدور: {role}";
+        ReportsButton.IsVisible = role == "Admin";
 
         await RequestNotificationPermissionAsync();
         await CheckForNewOrdersAsync();
@@ -139,5 +140,10 @@ public partial class MainPage : ContentPage
     private async void OnOrdersClicked(object sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("//OrdersPage");
+    }
+
+    private async void OnReportsClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//ReportsPage");
     }
 }
