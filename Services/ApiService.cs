@@ -305,11 +305,12 @@ namespace BistroPOS.Mobile.Services
         public int Quantity { get; set; }
     }
 
-    public class OrderDto
+        public class OrderDto
     {
         public int OrderId { get; set; }
         public string TableNumber { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
+        public string CreatedBy { get; set; } = string.Empty;
         public List<OrderItemDto> Items { get; set; } = new();
         public decimal Total { get; set; }
         public string Status { get; set; } = string.Empty;
