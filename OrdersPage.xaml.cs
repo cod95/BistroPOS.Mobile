@@ -226,6 +226,9 @@ public class OrderViewModel : INotifyPropertyChanged
             HasTableInfo = false;
         }
 
+                CreatedByText = $"👤 {dto.CreatedBy}";
+        HasCreatedBy = !string.IsNullOrWhiteSpace(dto.CreatedBy);
+
         ItemsText = string.Join("\n", dto.Items.Select(i => $"{i.Name} {i.Quantity}"));
         TotalText = $"{dto.Total:N0} ل.ل";
         OrderTime = dto.OrderTime;
