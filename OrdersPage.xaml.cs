@@ -190,6 +190,8 @@ public class OrderViewModel : INotifyPropertyChanged
     public string OrderIdDisplay { get; }
     public string? TableInfo { get; }
     public bool HasTableInfo { get; }
+    public string CreatedByText { get; }
+    public bool HasCreatedBy { get; }
     public string ItemsText { get; }
     public string TotalText { get; }
     public string StatusText { get; }
