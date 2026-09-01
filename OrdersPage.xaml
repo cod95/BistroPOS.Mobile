@@ -81,6 +81,10 @@
                                    TextColor="#1E64B4"
                                    FontSize="13"/>
 
+                            <Label Text="{Binding CreatedByText}"
+                                   IsVisible="{Binding HasCreatedBy}"
+                                   FontSize="11" TextColor="#888888"/>
+
                             <Label Text="{Binding ItemsText}"
                                    FontSize="13" TextColor="#555555"/>
 
