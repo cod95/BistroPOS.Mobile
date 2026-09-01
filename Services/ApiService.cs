@@ -1,764 +1,414 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.IO;
-using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using RestaurantOMS.Data;
-using RestaurantOMS.Models;
 
-namespace RestaurantOMS.Api
+namespace BistroPOS.Mobile.Services
 {
-    public static class ApiServer
+    public class ApiService
     {
-        private static HttpListener _listener;
-        private static CancellationTokenSource _cts;
-        private const int Port = 5050;
-
-        private static UdpClient _discoveryListener;
+        private readonly HttpClient _httpClient = new();
         private const int DiscoveryPort = 5051;
+        private const int ApiPort = 5050;
 
-        private static readonly Dictionary<string, string> _tokenRoles = new();
-        private static readonly Dictionary<string, string> _tokenUsers = new();
-        private static readonly object _tokenLock = new();
+        public string? LastError { get; private set; }
+        public string BaseUrl { get; private set; }
 
-        public static void Start()
+        public ApiService()
         {
-            try
-            {
-                _cts = new CancellationTokenSource();
-                _listener = new HttpListener();
-                _listener.Prefixes.Add($"http://+:{Port}/");
-                _listener.Start();
-                Task.Run(() => Listen(_cts.Token));
-                Console.WriteLine($"[ApiServer] Started on port {Port}");
+            string savedIp = Preferences.Get("ServerIp", "192.168.0.122");
+            BaseUrl = $"http://{savedIp}:{ApiPort}";
+            _httpClient.BaseAddress = new Uri(BaseUrl);
 
-                StartDiscoveryListener();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("[ApiServer] Failed to start: " + ex.Message);
-            }
+            string token = Preferences.Get("ApiToken", "");
+            if (!string.IsNullOrWhiteSpace(token))
+                _httpClient.DefaultRequestHeaders.Add("X-Api-Token", token);
         }
 
-        public static void Stop()
+        public async Task<bool> DiscoverServerAsync()
         {
             try
             {
-                _cts?.Cancel();
-                _listener?.Stop();
-                _listener?.Close();
-                _discoveryListener?.Close();
+                using var udp = new UdpClient();
+                udp.EnableBroadcast = true;
+
+                byte[] message = Encoding.UTF8.GetBytes("BISTROPOS_DISCOVER");
+                var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DiscoveryPort);
+                await udp.SendAsync(message, message.Length, broadcastEndpoint);
+
+                var receiveTask = udp.ReceiveAsync();
+                var timeoutTask = Task.Delay(2500);
+                var completed = await Task.WhenAny(receiveTask, timeoutTask);
+
+                if (completed == receiveTask)
+                {
+                    var result = receiveTask.Result;
+                    string reply = Encoding.UTF8.GetString(result.Buffer);
+                    if (reply == "BISTROPOS_HERE")
+                    {
+                        string ip = result.RemoteEndPoint.Address.ToString();
+                        Preferences.Set("ServerIp", ip);
+                        BaseUrl = $"http://{ip}:{ApiPort}";
+                        _httpClient.BaseAddress = new Uri(BaseUrl);
+                        return true;
+                    }
+                }
             }
             catch { }
+            return false;
         }
 
-        private static void StartDiscoveryListener()
+        public void SetManualServerIp(string ip)
+        {
+            Preferences.Set("ServerIp", ip);
+            BaseUrl = $"http://{ip}:{ApiPort}";
+            _httpClient.BaseAddress = new Uri(BaseUrl);
+        }
+
+        public async Task<bool> PingAsync()
         {
             try
             {
-                _discoveryListener = new UdpClient(DiscoveryPort);
-                _discoveryListener.EnableBroadcast = true;
-                Task.Run(ListenForDiscovery);
-                Console.WriteLine($"[Discovery] Listening on port {DiscoveryPort}");
+                var response = await _httpClient.GetAsync("/api/ping");
+                return response.IsSuccessStatusCode;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("[Discovery] Failed to start: " + ex.Message);
-            }
+            catch { return false; }
         }
 
-        private static async Task ListenForDiscovery()
+        public async Task<LoginResponse?> LoginAsync(string username, string password)
         {
-            while (true)
-            {
-                try
-                {
-                    var result = await _discoveryListener.ReceiveAsync();
-                    string message = Encoding.UTF8.GetString(result.Buffer);
-
-                    if (message == "BISTROPOS_DISCOVER")
-                    {
-                        byte[] reply = Encoding.UTF8.GetBytes("BISTROPOS_HERE");
-                        await _discoveryListener.SendAsync(reply, reply.Length, result.RemoteEndPoint);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("[Discovery] Listen error: " + ex.Message);
-                    break;
-                }
-            }
-        }
-
-        private static async Task Listen(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested && _listener.IsListening)
-            {
-                try
-                {
-                    var context = await _listener.GetContextAsync();
-                    _ = Task.Run(() => HandleRequest(context));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("[ApiServer] Listen error: " + ex.Message);
-                }
-            }
-        }
-
-        private static bool IsAuthorized(HttpListenerRequest request, out string role, out string fullName)
-        {
-            role = null; fullName = null;
-            string token = request.Headers["X-Api-Token"];
-            if (string.IsNullOrWhiteSpace(token)) return false;
-            lock (_tokenLock)
-            {
-                if (!_tokenRoles.TryGetValue(token, out role)) return false;
-                _tokenUsers.TryGetValue(token, out fullName);
-                return true;
-            }
-        }
-
-        private static void HandleRequest(HttpListenerContext context)
-        {
-            var request = context.Request;
-            var response = context.Response;
-
-            response.AddHeader("Access-Control-Allow-Origin", "*");
-            response.AddHeader("Access-Control-Allow-Headers", "Content-Type, X-Api-Token");
-            response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-
             try
             {
-                string path = request.Url.AbsolutePath.ToLower();
+                var request = new { username, password };
+                var response = await _httpClient.PostAsJsonAsync("/api/login", request);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<LoginResponse>();
+            }
+            catch { return null; }
+        }
 
-                if (request.HttpMethod == "OPTIONS")
-                {
-                    response.StatusCode = 200;
-                    response.Close();
-                    return;
-                }
+        public async Task<List<MenuItemDto>?> GetMenuAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("/api/menu");
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<MenuResponse>();
+                return result?.Items;
+            }
+            catch { return null; }
+        }
 
-                string userRole = null;
-                string userFullName = null;
+        public async Task<CreateOrderResponse?> CreateOrderAsync(CreateOrderRequest order)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("/api/order", order);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<CreateOrderResponse>();
+            }
+            catch { return null; }
+        }
 
-                if (path != "/api/login" && path != "/api/ping")
-                {
-                    if (!IsAuthorized(request, out userRole, out userFullName))
-                    {
-                        WriteJson(response, 401, new { success = false, message = "غير مصرح — الرجاء تسجيل الدخول من جديد" });
-                        return;
-                    }
+        public async Task<List<OrderDto>?> GetOrdersAsync(string status = "All", DateTime? date = null)
+        {
+            try
+            {
+                string url = $"/api/orders?status={Uri.EscapeDataString(status)}";
+                if (date.HasValue)
+                    url += $"&date={date.Value:yyyy-MM-dd}";
 
-                    if (path == "/api/orders/new-day" && userRole != "Admin")
-                    {
-                        WriteJson(response, 403, new { success = false, message = "هذا الإجراء متاح للمدير فقط" });
-                        return;
-                    }
-
-                    if (path == "/api/order/delete" && userRole != "Admin")
-                    {
-                        WriteJson(response, 403, new { success = false, message = "هذا الإجراء متاح للمدير فقط" });
-                        return;
-                    }
-
-                    if (path == "/api/reports" && userRole != "Admin")
-                    {
-                        WriteJson(response, 403, new { success = false, message = "هذا الإجراء متاح للمدير فقط" });
-                        return;
-                    }
-
-                    if (path.StartsWith("/api/debts") && userRole != "Admin")
-                    {
-                        WriteJson(response, 403, new { success = false, message = "هذا الإجراء متاح للمدير فقط" });
-                        return;
-                    }
-                }
-
-                if (path == "/api/login" && request.HttpMethod == "POST")
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
                 {
-                    HandleLogin(request, response);
+                    LastError = $"HTTP {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}";
+                    return null;
                 }
-                else if (path == "/api/ping" && request.HttpMethod == "GET")
-                {
-                    WriteJson(response, 200, new { success = true, message = "Bistro POS API is running" });
-                }
-                else if (path == "/api/menu" && request.HttpMethod == "GET")
-                {
-                    HandleGetMenu(response);
-                }
-                else if (path == "/api/order" && request.HttpMethod == "POST")
-                {
-                    HandleCreateOrder(request, response, userFullName);
-                }
-                else if (path == "/api/orders" && request.HttpMethod == "GET")
-                {
-                    HandleGetOrders(request, response);
-                }
-                else if (path == "/api/order/advance" && request.HttpMethod == "POST")
-                {
-                    HandleAdvanceOrder(request, response);
-                }
-                else if (path == "/api/order/delete" && request.HttpMethod == "POST")
-                {
-                    HandleDeleteOrder(request, response);
-                }
-                else if (path == "/api/orders/deliver-all" && request.HttpMethod == "POST")
-                {
-                    HandleDeliverAll(response);
-                }
-                else if (path == "/api/orders/new-day" && request.HttpMethod == "POST")
-                {
-                    HandleNewDay(response);
-                }
-                else if (path == "/api/reports" && request.HttpMethod == "GET")
-                {
-                    HandleGetReports(request, response);
-                }
-                else if (path == "/api/debts/customers" && request.HttpMethod == "GET")
-                {
-                    HandleGetDebtCustomers(response);
-                }
-                else if (path == "/api/debts/customer" && request.HttpMethod == "GET")
-                {
-                    HandleGetCustomerDebts(request, response);
-                }
-                else if (path == "/api/debts/add-customer" && request.HttpMethod == "POST")
-                {
-                    HandleAddDebtCustomer(request, response);
-                }
-                else if (path == "/api/debts/delete-customer" && request.HttpMethod == "POST")
-                {
-                    HandleDeleteDebtCustomer(request, response);
-                }
-                else if (path == "/api/debts/pay" && request.HttpMethod == "POST")
-                {
-                    HandlePayDebt(request, response);
-                }
-                else
-                {
-                    WriteJson(response, 404, new { success = false, message = "Endpoint not found" });
-                }
+                var result = await response.Content.ReadFromJsonAsync<OrdersResponse>();
+                LastError = null;
+                return result?.Orders;
             }
             catch (Exception ex)
             {
-                WriteJson(response, 500, new { success = false, message = "Server error: " + ex.Message });
+                LastError = ex.Message;
+                return null;
             }
         }
 
-        private class LoginRequest
+        public async Task<AdvanceOrderResponse?> AdvanceOrderAsync(int orderId)
         {
-            public string Username { get; set; }
-            public string Password { get; set; }
+            try
+            {
+                var request = new { orderId };
+                var response = await _httpClient.PostAsJsonAsync("/api/order/advance", request);
+                return await response.Content.ReadFromJsonAsync<AdvanceOrderResponse>();
+            }
+            catch { return null; }
         }
 
-        private static void HandleLogin(HttpListenerRequest request, HttpListenerResponse response)
+        public async Task<DeleteOrderResponse?> DeleteOrderAsync(int orderId)
         {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var login = JsonConvert.DeserializeObject<LoginRequest>(body);
-
-            if (login == null || string.IsNullOrWhiteSpace(login.Username) || string.IsNullOrWhiteSpace(login.Password))
+            try
             {
-                WriteJson(response, 400, new { success = false, message = "Username and password required" });
-                return;
+                var request = new { orderId };
+                var response = await _httpClient.PostAsJsonAsync("/api/order/delete", request);
+                return await response.Content.ReadFromJsonAsync<DeleteOrderResponse>();
             }
-
-            var user = DatabaseHelper.AuthenticateUser(login.Username.Trim(), login.Password);
-
-            if (user == null)
-            {
-                WriteJson(response, 401, new { success = false, message = "Invalid username or password" });
-                return;
-            }
-
-            string token = Guid.NewGuid().ToString("N");
-            lock (_tokenLock)
-            {
-                _tokenRoles[token] = user.Role;
-                _tokenUsers[token] = user.FullName;
-            }
-
-            WriteJson(response, 200, new
-            {
-                success = true,
-                userId = user.UserID,
-                username = user.Username,
-                fullName = user.FullName,
-                role = user.Role,
-                token = token
-            });
+            catch { return null; }
         }
 
-        private static void HandleGetMenu(HttpListenerResponse response)
+        public async Task<DeliverAllResponse?> DeliverAllAsync()
         {
-            var items = DatabaseHelper.GetAllMenuItems(availableOnly: true);
-
-            var result = new List<object>();
-            foreach (var item in items)
+            try
             {
-                result.Add(new
-                {
-                    itemId = item.ItemID,
-                    name = item.Name,
-                    category = item.Category,
-                    price = item.Price
-                });
+                var response = await _httpClient.PostAsync("/api/orders/deliver-all", null);
+                return await response.Content.ReadFromJsonAsync<DeliverAllResponse>();
             }
-
-            WriteJson(response, 200, new { success = true, items = result });
+            catch { return null; }
         }
 
-        private class OrderItemRequest
+        public async Task<bool> NewDayAsync()
         {
-            public int ItemID { get; set; }
-            public int Quantity { get; set; }
+            try
+            {
+                var response = await _httpClient.PostAsync("/api/orders/new-day", null);
+                return response.IsSuccessStatusCode;
+            }
+            catch { return false; }
         }
 
-        private class OrderRequest
+        public async Task<ReportsDto?> GetReportsAsync(DateTime from, DateTime to)
         {
-            public string TableNumber { get; set; }
-            public string Notes { get; set; }
-            public decimal Discount { get; set; }
-            public List<OrderItemRequest> Items { get; set; }
+            try
+            {
+                string url = $"/api/reports?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<ReportsDto>();
+            }
+            catch { return null; }
         }
 
-        private static void HandleCreateOrder(HttpListenerRequest request, HttpListenerResponse response, string createdBy)
+        public async Task<List<DebtCustomerDto>?> GetDebtCustomersAsync()
         {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var orderReq = JsonConvert.DeserializeObject<OrderRequest>(body);
-
-            if (orderReq == null || orderReq.Items == null || orderReq.Items.Count == 0)
+            try
             {
-                WriteJson(response, 400, new { success = false, message = "الطلبية لازم تحتوي على صنف واحد عالأقل" });
-                return;
+                var response = await _httpClient.GetAsync("/api/debts/customers");
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<DebtCustomersResponse>();
+                return result?.Customers;
             }
-
-            var order = new Order
-            {
-                TableNumber = string.IsNullOrWhiteSpace(orderReq.TableNumber) ? "طلبية موبايل" : orderReq.TableNumber,
-                CustomerName = "",
-                Status = OrderStatus.Pending,
-                OrderTime = DateTime.Now,
-                Notes = orderReq.Notes ?? "",
-                Discount = orderReq.Discount,
-                CreatedBy = createdBy ?? "",
-                Items = new List<OrderItem>()
-            };
-
-            var allItems = DatabaseHelper.GetAllMenuItems(availableOnly: true);
-
-            foreach (var reqItem in orderReq.Items)
-            {
-                var menuItem = allItems.Find(m => m.ItemID == reqItem.ItemID);
-                if (menuItem == null || reqItem.Quantity <= 0) continue;
-
-                order.Items.Add(new OrderItem
-                {
-                    ItemID = menuItem.ItemID,
-                    ItemName = menuItem.Name,
-                    UnitPrice = menuItem.Price,
-                    Quantity = reqItem.Quantity
-                });
-            }
-
-            if (order.Items.Count == 0)
-            {
-                WriteJson(response, 400, new { success = false, message = "الأصناف المطلوبة مش موجودة أو مش متوفرة حالياً" });
-                return;
-            }
-
-            int orderId = DatabaseHelper.PlaceOrder(order);
-
-            WriteJson(response, 200, new { success = true, orderId = orderId });
+            catch { return null; }
         }
 
-        private static void HandleGetOrders(HttpListenerRequest request, HttpListenerResponse response)
+        public async Task<CustomerDebtsResponse?> GetCustomerDebtsAsync(string name)
         {
-            string status = request.QueryString["status"];
-            if (string.IsNullOrWhiteSpace(status)) status = "All";
-
-            DateTime? date = null;
-            string dateStr = request.QueryString["date"];
-            if (!string.IsNullOrWhiteSpace(dateStr) && DateTime.TryParse(dateStr, out var parsedDate))
-                date = parsedDate;
-
-            var orders = DatabaseHelper.GetOrders(status, date);
-
-            var result = new List<object>();
-            foreach (var o in orders)
+            try
             {
-                result.Add(new
-                {
-                    orderId = o.OrderID,
-                    tableNumber = o.TableNumber,
-                    customerName = o.CustomerName,
-                    createdBy = o.CreatedBy,
-                    items = o.Items.Select(i => new { name = i.ItemName, quantity = i.Quantity }).ToList(),
-                    total = o.GrandTotal,
-                    status = o.Status.ToString(),
-                    orderTime = o.OrderTime.ToString("dd MMM hh:mm tt")
-                });
+                var response = await _httpClient.GetAsync($"/api/debts/customer?name={Uri.EscapeDataString(name)}");
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<CustomerDebtsResponse>();
             }
-
-            WriteJson(response, 200, new { success = true, orders = result });
+            catch { return null; }
         }
 
-        private class AdvanceOrderRequest
+        public async Task<SimpleResponse?> AddDebtCustomerAsync(string name)
         {
-            public int OrderId { get; set; }
+            try
+            {
+                var request = new { name };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/add-customer", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
+            }
+            catch { return null; }
         }
 
-        private static void HandleAdvanceOrder(HttpListenerRequest request, HttpListenerResponse response)
+        public async Task<SimpleResponse?> DeleteDebtCustomerAsync(string name)
         {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var req = JsonConvert.DeserializeObject<AdvanceOrderRequest>(body);
-            if (req == null || req.OrderId <= 0)
+            try
             {
-                WriteJson(response, 400, new { success = false, message = "رقم الطلبية مطلوب" });
-                return;
+                var request = new { name };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/delete-customer", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
             }
-
-            var order = DatabaseHelper.GetOrderById(req.OrderId);
-            if (order == null)
-            {
-                WriteJson(response, 404, new { success = false, message = "الطلبية غير موجودة" });
-                return;
-            }
-
-            OrderStatus next;
-            switch (order.Status)
-            {
-                case OrderStatus.Pending: next = OrderStatus.Preparing; break;
-                case OrderStatus.Preparing: next = OrderStatus.Ready; break;
-                case OrderStatus.Ready: next = OrderStatus.Completed; break;
-                case OrderStatus.Cancelled: next = OrderStatus.Pending; break;
-                default:
-                    WriteJson(response, 400, new { success = false, message = "الطلبية مكتملة أصلاً" });
-                    return;
-            }
-
-            DatabaseHelper.UpdateOrderStatus(req.OrderId, next);
-            WriteJson(response, 200, new { success = true, newStatus = next.ToString() });
+            catch { return null; }
         }
 
-        private class DeleteOrderRequest
+        public async Task<SimpleResponse?> PayDebtAsync(string customerName, decimal amount)
         {
-            public int OrderId { get; set; }
+            try
+            {
+                var request = new { customerName, amount };
+                var response = await _httpClient.PostAsJsonAsync("/api/debts/pay", request);
+                return await response.Content.ReadFromJsonAsync<SimpleResponse>();
+            }
+            catch { return null; }
         }
+    }
 
-        private static void HandleDeleteOrder(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
+    // ==========================================
+    // نماذج البيانات (Models)
+    // ==========================================
 
-            var req = JsonConvert.DeserializeObject<DeleteOrderRequest>(body);
-            if (req == null || req.OrderId <= 0)
-            {
-                WriteJson(response, 400, new { success = false, message = "رقم الطلبية مطلوب" });
-                return;
-            }
+    public class LoginResponse
+    {
+        public bool Success { get; set; }
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+    }
 
-            var order = DatabaseHelper.GetOrderById(req.OrderId);
-            if (order == null)
-            {
-                WriteJson(response, 404, new { success = false, message = "الطلبية غير موجودة" });
-                return;
-            }
+    public class MenuItemDto
+    {
+        public int ItemId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+    }
 
-            if (order.Status == OrderStatus.Preparing || order.Status == OrderStatus.Ready)
-            {
-                WriteJson(response, 400, new { success = false, message = "ما فيك تحذف طلب قيد التنفيذ. الغيه أول." });
-                return;
-            }
+    public class MenuResponse
+    {
+        public bool Success { get; set; }
+        public List<MenuItemDto> Items { get; set; } = new();
+    }
 
-            DatabaseHelper.DeleteOrder(req.OrderId);
-            WriteJson(response, 200, new { success = true });
-        }
+    public class OrderItemRequest
+    {
+        public int ItemID { get; set; }
+        public int Quantity { get; set; }
+    }
 
-        private static void HandleDeliverAll(HttpListenerResponse response)
-        {
-            var pending = DatabaseHelper.GetOrders("Pending", null);
-            var preparing = DatabaseHelper.GetOrders("Preparing", null);
-            var ready = DatabaseHelper.GetOrders("Ready", null);
-            var allActive = pending.Concat(preparing).Concat(ready).ToList();
+    public class CreateOrderRequest
+    {
+        public string? TableNumber { get; set; }
+        public string? Notes { get; set; }
+        public decimal Discount { get; set; }
+        public List<OrderItemRequest> Items { get; set; } = new();
+    }
 
-            if (allActive.Count == 0)
-            {
-                WriteJson(response, 200, new { success = true, count = 0, total = 0 });
-                return;
-            }
+    public class CreateOrderResponse
+    {
+        public bool Success { get; set; }
+        public int OrderId { get; set; }
+        public string? Message { get; set; }
+    }
 
-            decimal total = 0;
-            foreach (var order in allActive)
-            {
-                total += order.GrandTotal;
-                DatabaseHelper.UpdateOrderStatus(order.OrderID, OrderStatus.Completed);
-            }
+    public class OrderItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
 
-            DatabaseHelper.AddToCashRegister(total, $"Deliver All - {DateTime.Now}");
+    public class OrderDto
+    {
+        public int OrderId { get; set; }
+        public string TableNumber { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public List<OrderItemDto> Items { get; set; } = new();
+        public decimal Total { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string OrderTime { get; set; } = string.Empty;
+    }
 
-            WriteJson(response, 200, new { success = true, count = allActive.Count, total = total });
-        }
+    public class OrdersResponse
+    {
+        public bool Success { get; set; }
+        public List<OrderDto> Orders { get; set; } = new();
+    }
 
-        private static void HandleNewDay(HttpListenerResponse response)
-        {
-            DatabaseHelper.ClearAllOrders();
-            WriteJson(response, 200, new { success = true });
-        }
+    public class AdvanceOrderResponse
+    {
+        public bool Success { get; set; }
+        public string? NewStatus { get; set; }
+        public string? Message { get; set; }
+    }
 
-        private static void HandleGetReports(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            DateTime from = DateTime.Today.AddDays(-30);
-            DateTime to = DateTime.Today;
+    public class DeleteOrderResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+    }
 
-            string fromStr = request.QueryString["from"];
-            string toStr = request.QueryString["to"];
-            if (!string.IsNullOrWhiteSpace(fromStr) && DateTime.TryParse(fromStr, out var parsedFrom)) from = parsedFrom.Date;
-            if (!string.IsNullOrWhiteSpace(toStr) && DateTime.TryParse(toStr, out var parsedTo)) to = parsedTo.Date;
+    public class DeliverAllResponse
+    {
+        public bool Success { get; set; }
+        public int Count { get; set; }
+        public decimal Total { get; set; }
+    }
 
-            if (from > to)
-            {
-                WriteJson(response, 400, new { success = false, message = "تاريخ البداية لازم يكون قبل تاريخ النهاية" });
-                return;
-            }
+    public class CategorySalesDto
+    {
+        public string Category { get; set; } = string.Empty;
+        public int TotalQty { get; set; }
+        public decimal Revenue { get; set; }
+    }
 
-            var orders = DatabaseHelper.GetOrders("All", null);
-            int total = 0; decimal revenue = 0; int completed = 0, cancelled = 0;
-            foreach (var o in orders)
-            {
-                if (o.OrderTime.Date >= from && o.OrderTime.Date <= to)
-                {
-                    total++;
-                    if (o.Status == OrderStatus.Completed) { revenue += o.GrandTotal; completed++; }
-                    if (o.Status == OrderStatus.Cancelled) cancelled++;
-                }
-            }
-            decimal avgOrder = completed > 0 ? revenue / completed : 0;
+    public class TopItemDto
+    {
+        public string ItemName { get; set; } = string.Empty;
+        public int TotalSold { get; set; }
+        public decimal Revenue { get; set; }
+    }
 
-            var catData = DatabaseHelper.GetSalesByCategory(from, to);
-            var categories = new List<object>();
-            foreach (DataRow r in catData.Rows)
-            {
-                categories.Add(new
-                {
-                    category = r["Category"].ToString(),
-                    totalQty = Convert.ToInt32(r["TotalQty"]),
-                    revenue = Convert.ToDecimal(r["Revenue"])
-                });
-            }
+    public class ReportsDto
+    {
+        public bool Success { get; set; }
+        public int TotalOrders { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal AvgOrder { get; set; }
+        public int Completed { get; set; }
+        public int Cancelled { get; set; }
+        public List<CategorySalesDto> SalesByCategory { get; set; } = new();
+        public List<TopItemDto> TopItems { get; set; } = new();
+    }
 
-            var topData = DatabaseHelper.GetTopSellingItems(from, to, 8);
-            var topItems = new List<object>();
-            foreach (DataRow r in topData.Rows)
-            {
-                topItems.Add(new
-                {
-                    itemName = r["ItemName"].ToString(),
-                    totalSold = Convert.ToInt32(r["TotalSold"]),
-                    revenue = Convert.ToDecimal(r["Revenue"])
-                });
-            }
+    public class DebtCustomerDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public decimal Total { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Remaining { get; set; }
+    }
 
-            WriteJson(response, 200, new
-            {
-                success = true,
-                totalOrders = total,
-                revenue = revenue,
-                avgOrder = avgOrder,
-                completed = completed,
-                cancelled = cancelled,
-                salesByCategory = categories,
-                topItems = topItems
-            });
-        }
+    public class DebtCustomersResponse
+    {
+        public bool Success { get; set; }
+        public List<DebtCustomerDto> Customers { get; set; } = new();
+    }
 
-        private static void HandleGetDebtCustomers(HttpListenerResponse response)
-        {
-            var customers = DatabaseHelper.GetAllDebtCustomers();
-            var result = new List<object>();
-            foreach (var name in customers)
-            {
-                var debts = DatabaseHelper.GetDebtsByCustomer(name);
-                decimal total = debts.Sum(d => d.TotalAmount);
-                decimal paid = debts.Sum(d => d.PaidAmount);
-                decimal remaining = total - paid;
-                result.Add(new { name, total, paid, remaining });
-            }
-            WriteJson(response, 200, new { success = true, customers = result });
-        }
+    public class DebtItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
 
-        private static void HandleGetCustomerDebts(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            string name = request.QueryString["name"];
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                WriteJson(response, 400, new { success = false, message = "اسم الزبون مطلوب" });
-                return;
-            }
+    public class CustomerDebtDto
+    {
+        public int Id { get; set; }
+        public string Date { get; set; } = string.Empty;
+        public List<DebtItemDto> Items { get; set; } = new();
+        public decimal Total { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Remaining { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
 
-            var debts = DatabaseHelper.GetDebtsByCustomer(name);
-            var result = debts.Select(d => new
-            {
-                id = d.Id,
-                date = d.Date.ToString("dd/MM/yyyy"),
-                items = d.Items.Select(i => new { name = i.ItemName, quantity = i.Quantity }).ToList(),
-                total = d.TotalAmount,
-                paid = d.PaidAmount,
-                remaining = d.RemainingAmount,
-                status = d.RemainingAmount <= 0 ? "Paid" : "Remaining"
-            }).ToList();
+    public class CustomerDebtsResponse
+    {
+        public bool Success { get; set; }
+        public List<CustomerDebtDto> Debts { get; set; } = new();
+        public decimal TotalRemaining { get; set; }
+    }
 
-            decimal totalRemaining = debts.Where(d => d.RemainingAmount > 0).Sum(d => d.RemainingAmount);
-
-            WriteJson(response, 200, new { success = true, debts = result, totalRemaining });
-        }
-
-        private class AddCustomerRequest
-        {
-            public string Name { get; set; }
-        }
-
-        private static void HandleAddDebtCustomer(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var req = JsonConvert.DeserializeObject<AddCustomerRequest>(body);
-            if (req == null || string.IsNullOrWhiteSpace(req.Name))
-            {
-                WriteJson(response, 400, new { success = false, message = "اسم الزبون مطلوب" });
-                return;
-            }
-
-            string name = req.Name.Trim();
-            var existing = DatabaseHelper.GetAllDebtCustomers();
-            if (existing.Contains(name))
-            {
-                WriteJson(response, 400, new { success = false, message = "الزبون موجود أصلاً" });
-                return;
-            }
-
-            var emptyOrder = new Order
-            {
-                TableNumber = "0",
-                CustomerName = name,
-                Items = new List<OrderItem>(),
-                Discount = 0
-            };
-            DatabaseHelper.SaveDebt(emptyOrder, name);
-
-            WriteJson(response, 200, new { success = true });
-        }
-
-        private class DeleteCustomerRequest
-        {
-            public string Name { get; set; }
-        }
-
-        private static void HandleDeleteDebtCustomer(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var req = JsonConvert.DeserializeObject<DeleteCustomerRequest>(body);
-            if (req == null || string.IsNullOrWhiteSpace(req.Name))
-            {
-                WriteJson(response, 400, new { success = false, message = "اسم الزبون مطلوب" });
-                return;
-            }
-
-            DatabaseHelper.DeleteCustomerDebts(req.Name.Trim());
-            WriteJson(response, 200, new { success = true });
-        }
-
-        private class PayDebtRequest
-        {
-            public string CustomerName { get; set; }
-            public decimal Amount { get; set; }
-        }
-
-        private static void HandlePayDebt(HttpListenerRequest request, HttpListenerResponse response)
-        {
-            string body;
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                body = reader.ReadToEnd();
-
-            var req = JsonConvert.DeserializeObject<PayDebtRequest>(body);
-            if (req == null || string.IsNullOrWhiteSpace(req.CustomerName) || req.Amount <= 0)
-            {
-                WriteJson(response, 400, new { success = false, message = "بيانات الدفع غير صحيحة" });
-                return;
-            }
-
-            var unpaidDebts = DatabaseHelper.GetDebtsByCustomer(req.CustomerName)
-                .Where(d => d.RemainingAmount > 0)
-                .OrderBy(d => d.Date)
-                .ToList();
-
-            if (unpaidDebts.Count == 0)
-            {
-                WriteJson(response, 400, new { success = false, message = "لا يوجد دين متبقي لهذا الزبون" });
-                return;
-            }
-
-            decimal totalRemaining = unpaidDebts.Sum(d => d.RemainingAmount);
-            if (req.Amount > totalRemaining)
-            {
-                WriteJson(response, 400, new { success = false, message = $"المبلغ ({req.Amount:N0}) أكبر من الدين المتبقي ({totalRemaining:N0})" });
-                return;
-            }
-
-            decimal remaining = req.Amount;
-            foreach (var debt in unpaidDebts)
-            {
-                if (remaining <= 0) break;
-                decimal payAmount = Math.Min(remaining, debt.RemainingAmount);
-                DatabaseHelper.RecordDebtPayment(debt.Id, payAmount);
-                remaining -= payAmount;
-            }
-
-            var fakeOrder = new Order
-            {
-                TableNumber = "DEBT",
-                CustomerName = req.CustomerName,
-                Notes = $"سداد دين - {DateTime.Now:dd/MM/yyyy HH:mm}",
-                Items = new List<OrderItem> { new OrderItem { ItemName = "سداد دين", UnitPrice = req.Amount, Quantity = 1 } },
-                Status = OrderStatus.Completed,
-                Discount = 0
-            };
-            DatabaseHelper.PlaceOrder(fakeOrder);
-
-            WriteJson(response, 200, new { success = true });
-        }
-
-        private static void WriteJson(HttpListenerResponse response, int statusCode, object data)
-        {
-            string json = JsonConvert.SerializeObject(data);
-            byte[] buffer = Encoding.UTF8.GetBytes(json);
-
-            response.StatusCode = statusCode;
-            response.ContentType = "application/json";
-            response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
-            response.OutputStream.Close();
-        }
+    public class SimpleResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
     }
 }
