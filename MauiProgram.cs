@@ -2,6 +2,7 @@ using BistroPOS.Mobile.Services;
 using Microsoft.Extensions.Logging;
 using Plugin.LocalNotification;
 using Plugin.LocalNotification.AndroidOption;
+using BarcodeScanning;
 
 namespace BistroPOS.Mobile
 {
@@ -24,6 +25,7 @@ namespace BistroPOS.Mobile
                         });
                     });
                 })
+                .UseBarcodeScanning()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
