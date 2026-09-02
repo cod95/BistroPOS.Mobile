@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using BarcodeScanning;
 using BistroPOS.Mobile.Services;
 
 namespace BistroPOS.Mobile;
@@ -28,6 +29,13 @@ public partial class OrderPage : ContentPage
         await LoadMenuAsync();
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        if (ScannerCameraView != null)
+            ScannerCameraView.CameraEnabled = false;
+    }
+
     private async Task LoadMenuAsync()
     {
         var items = await _api.GetMenuAsync();
@@ -44,6 +52,7 @@ public partial class OrderPage : ContentPage
             Name = item.Name,
             Category = item.Category,
             Price = item.Price,
+            Barcode = item.Barcode,
             Quantity = 0
         }).ToList();
 
@@ -139,6 +148,41 @@ public partial class OrderPage : ContentPage
         TotalLabel.Text = $"الإجمالي: {total:N0} ل.ل";
     }
 
+    private async void OnScanBarcodeClicked(object sender, EventArgs e)
+    {
+        await Methods.AskForRequiredPermissionAsync();
+        ScannerOverlay.IsVisible = true;
+        ScannerCameraView.CameraEnabled = true;
+    }
+
+    private void OnCloseScannerClicked(object sender, EventArgs e)
+    {
+        ScannerCameraView.CameraEnabled = false;
+        ScannerOverlay.IsVisible = false;
+    }
+
+    private async void CameraView_OnDetectionFinished(object sender, OnDetectionFinishedEventArg e)
+    {
+        if (e.BarcodeResults.Count == 0) return;
+
+        string code = e.BarcodeResults.First().RawValue;
+
+        ScannerCameraView.CameraEnabled = false;
+        ScannerOverlay.IsVisible = false;
+
+        var match = _allMenuItems.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.Barcode) && i.Barcode == code);
+        if (match != null)
+        {
+            match.Quantity++;
+            UpdateTotal();
+            await DisplayAlert("تمت الإضافة", $"تمت إضافة \"{match.Name}\"", "تمام");
+        }
+        else
+        {
+            await DisplayAlert("غير موجود", "لم يتم العثور على صنف بهذا الباركود", "حسناً");
+        }
+    }
+
     private async void OnBackClicked(object sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("//MainPage");
@@ -193,6 +237,7 @@ public class MenuItemViewModel : INotifyPropertyChanged
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public string Barcode { get; set; } = string.Empty;
 
     private int _quantity;
     public int Quantity
