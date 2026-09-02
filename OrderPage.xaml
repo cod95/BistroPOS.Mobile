@@ -35,13 +35,12 @@
             <Entry x:Name="SearchEntry"
                    Grid.Column="0"
                    Placeholder="🔍 بحث عن صنف بالاسم..."/>
-            <Button Grid.Column="1"
-                    Text="📷"
-                    WidthRequest="46"
-                    FontSize="18"
-                    BackgroundColor="#3C78B4"
-                    TextColor="White"
-                    Clicked="OnScanBarcodeClicked"/>
+            <ImageButton Grid.Column="1"
+                         Source="barcode_icon.png"
+                         WidthRequest="46"
+                         Padding="10"
+                         BackgroundColor="#3C78B4"
+                         Clicked="OnScanBarcodeClicked"/>
         </Grid>
 
         <ScrollView Grid.Row="3"
