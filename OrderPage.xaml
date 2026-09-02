@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:scanner="clr-namespace:BarcodeScanning;assembly=BarcodeScanning.Native.Maui"
              x:Class="BistroPOS.Mobile.OrderPage"
              Title="طلبية جديدة">
 
@@ -30,10 +31,18 @@
                    Keyboard="Numeric"/>
         </VerticalStackLayout>
 
-        <Entry x:Name="SearchEntry"
-               Grid.Row="2"
-               Placeholder="🔍 بحث عن صنف بالاسم..."
-               Margin="10,10,10,0"/>
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="10,10,10,0" ColumnSpacing="8">
+            <Entry x:Name="SearchEntry"
+                   Grid.Column="0"
+                   Placeholder="🔍 بحث عن صنف بالاسم..."/>
+            <Button Grid.Column="1"
+                    Text="📷"
+                    WidthRequest="46"
+                    FontSize="18"
+                    BackgroundColor="#3C78B4"
+                    TextColor="White"
+                    Clicked="OnScanBarcodeClicked"/>
+        </Grid>
 
         <ScrollView Grid.Row="3"
                     Orientation="Horizontal"
@@ -89,6 +98,25 @@
                     FontAttributes="Bold" Margin="0,10,0,0"
                     Clicked="OnSubmitOrderClicked"/>
         </VerticalStackLayout>
+
+        <Grid x:Name="ScannerOverlay"
+              Grid.Row="0" Grid.RowSpan="6"
+              IsVisible="False"
+              BackgroundColor="Black">
+            <scanner:CameraView x:Name="ScannerCameraView"
+                                 CameraEnabled="False"
+                                 OnDetectionFinished="CameraView_OnDetectionFinished"/>
+            <VerticalStackLayout VerticalOptions="Start" Padding="20" Spacing="10">
+                <Button Text="✕ إغلاق الماسح"
+                        BackgroundColor="#A01E1E"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        Clicked="OnCloseScannerClicked"/>
+                <Label Text="وجّه الكاميرا نحو الباركود"
+                       TextColor="White"
+                       HorizontalOptions="Center"/>
+            </VerticalStackLayout>
+        </Grid>
 
     </Grid>
 </ContentPage>
