@@ -7,11 +7,17 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
-        <Button Grid.Row="0"
-                Text="← رجوع للرئيسية"
+                <Button Grid.Row="0"
+                Text="←"
+                FontSize="18"
+                FontAttributes="Bold"
+                WidthRequest="44"
+                HeightRequest="36"
+                Padding="0"
+                HorizontalOptions="Start"
                 BackgroundColor="#444444"
                 TextColor="White"
-                Margin="10,10,10,0"
+                Margin="10,10,0,0"
                 Clicked="OnBackClicked"/>
 
         <VerticalStackLayout Grid.Row="1" Padding="10,10,10,0" Spacing="8">
