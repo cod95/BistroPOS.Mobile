@@ -7,7 +7,13 @@
     <ScrollView>
         <VerticalStackLayout Padding="10" Spacing="12">
 
-            <Button Text="← رجوع للرئيسية"
+            <Button Text="←"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    WidthRequest="44"
+                    HeightRequest="36"
+                    Padding="0"
+                    HorizontalOptions="Start"
                     BackgroundColor="#444444"
                     TextColor="White"
                     Clicked="OnBackClicked"/>
