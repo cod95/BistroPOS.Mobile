@@ -6,12 +6,16 @@
 
     <Grid RowDefinitions="Auto,*">
 
-        <Button Grid.Row="0"
-                Text="← رجوع للرئيسية"
-                BackgroundColor="#444444"
-                TextColor="White"
-                Margin="10,10,10,0"
-                Clicked="OnBackClicked"/>
+            <Button Text="←"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    WidthRequest="44"
+                    HeightRequest="36"
+                    Padding="0"
+                    HorizontalOptions="Start"
+                    BackgroundColor="#444444"
+                    TextColor="White"
+                    Clicked="OnBackClicked"/>
 
         <!-- شاشة لائحة الزبائن -->
         <Grid x:Name="CustomerListSection" Grid.Row="1" RowDefinitions="Auto,*">
