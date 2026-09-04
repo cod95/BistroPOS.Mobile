@@ -103,13 +103,13 @@ public partial class OrdersPage : ContentPage
             _orders.Add(new OrderViewModel(o, isNew: !_seenOrderIds.Contains(o.OrderId), isAdmin: _isAdmin));
     }
 
-    private async void OnOrderCardTapped(object sender, EventArgs e)
+    private void OnOrderCardTapped(object sender, EventArgs e)
     {
         if (sender is Frame frame && frame.BindingContext is OrderViewModel vm)
         {
             vm.MarkSeen();
             SaveSeenOrderId(vm.OrderId);
-            try { await LocalNotificationCenter.Current.Cancel(vm.OrderId); } catch { }
+            try { LocalNotificationCenter.Current.Cancel(vm.OrderId); } catch { }
         }
     }
 
