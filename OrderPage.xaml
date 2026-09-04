@@ -43,8 +43,8 @@
                    Placeholder="🔍 بحث عن صنف بالاسم..."/>
             <ImageButton Grid.Column="1"
                          Source="barcode_icon.png"
-                         WidthRequest="46"
-                         HeightRequest="46"
+                         WidthRequest="30"
+                         HeightRequest="30"
                          Padding="10"
                          VerticalOptions="Start"
                          BackgroundColor="#3C78B4"
