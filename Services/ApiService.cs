@@ -29,36 +29,39 @@ namespace BistroPOS.Mobile.Services
                 _httpClient.DefaultRequestHeaders.Add("X-Api-Token", token);
         }
 
-        public async Task<bool> DiscoverServerAsync()
+               public async Task<bool> DiscoverServerAsync()
         {
-            try
+            for (int attempt = 0; attempt < 3; attempt++)
             {
-                using var udp = new UdpClient();
-                udp.EnableBroadcast = true;
-
-                byte[] message = Encoding.UTF8.GetBytes("BISTROPOS_DISCOVER");
-                var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DiscoveryPort);
-                await udp.SendAsync(message, message.Length, broadcastEndpoint);
-
-                var receiveTask = udp.ReceiveAsync();
-                var timeoutTask = Task.Delay(2500);
-                var completed = await Task.WhenAny(receiveTask, timeoutTask);
-
-                if (completed == receiveTask)
+                try
                 {
-                    var result = receiveTask.Result;
-                    string reply = Encoding.UTF8.GetString(result.Buffer);
-                    if (reply == "BISTROPOS_HERE")
+                    using var udp = new UdpClient();
+                    udp.EnableBroadcast = true;
+
+                    byte[] message = Encoding.UTF8.GetBytes("BISTROPOS_DISCOVER");
+                    var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DiscoveryPort);
+                    await udp.SendAsync(message, message.Length, broadcastEndpoint);
+
+                    var receiveTask = udp.ReceiveAsync();
+                    var timeoutTask = Task.Delay(1000);
+                    var completed = await Task.WhenAny(receiveTask, timeoutTask);
+
+                    if (completed == receiveTask)
                     {
-                        string ip = result.RemoteEndPoint.Address.ToString();
-                        Preferences.Set("ServerIp", ip);
-                        BaseUrl = $"http://{ip}:{ApiPort}";
-                        _httpClient.BaseAddress = new Uri(BaseUrl);
-                        return true;
+                        var result = receiveTask.Result;
+                        string reply = Encoding.UTF8.GetString(result.Buffer);
+                        if (reply == "BISTROPOS_HERE")
+                        {
+                            string ip = result.RemoteEndPoint.Address.ToString();
+                            Preferences.Set("ServerIp", ip);
+                            BaseUrl = $"http://{ip}:{ApiPort}";
+                            _httpClient.BaseAddress = new Uri(BaseUrl);
+                            return true;
+                        }
                     }
                 }
+                catch { }
             }
-            catch { }
             return false;
         }
 
