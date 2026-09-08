@@ -6,6 +6,7 @@
       android:roundIcon="@mipmap/appicon_round" 
       android:supportsRtl="true"
       android:usesCleartextTraffic="true">
+    <service android:name="com.cod95.bistropos.mobile.OrderPollingService" android:exported="false" android:foregroundServiceType="dataSync" />
   </application>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.INTERNET" />
