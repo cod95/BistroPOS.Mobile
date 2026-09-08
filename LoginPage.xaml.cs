@@ -92,6 +92,14 @@ public partial class LoginPage : ContentPage
                 Preferences.Set("FullName", result.FullName);
                 Preferences.Set("Role", result.Role);
                 Preferences.Set("ApiToken", result.Token);
+
+                // إعادة ضبط قائمة الإشعارات — أول تشغيل بعد تسجيل الدخول ما لازم يبعت إشعارات لطلبيات قديمة
+                Preferences.Remove("NotificationBaselineSet");
+                Preferences.Remove("NotifiedOrderIds");
+
+                BackgroundServiceHelper.StartOrderPollingService();
+                await BackgroundServiceHelper.RequestBatteryOptimizationExemptionAsync();
+
                 await Shell.Current.GoToAsync("//MainPage");
             }
             else
