@@ -83,8 +83,8 @@ public partial class ReportsPage : ContentPage
         var metrics = new (string title, string value, Color color)[]
         {
             ("إجمالي الطلبات", r.TotalOrders.ToString(), Color.FromArgb("#BA7517")),
-            ("الإيرادات", $"{r.Revenue:N0} ل.ل", Color.FromArgb("#1E8C3C")),
-            ("متوسط الطلبية", $"{r.AvgOrder:N0} ل.ل", Color.FromArgb("#3C78B4")),
+            ("الإيرادات", CurrencyService.Format(r.Revenue), Color.FromArgb("#1E8C3C")),
+            ("متوسط الطلبية", CurrencyService.Format(r.AvgOrder), Color.FromArgb("#3C78B4")),
             ("مكتملة", r.Completed.ToString(), Color.FromArgb("#1E8C64")),
             ("ملغاة", r.Cancelled.ToString(), Color.FromArgb("#B43C3C")),
         };
@@ -127,7 +127,7 @@ public class CategorySalesViewModel
     {
         Category = dto.Category;
         QtyText = $"{dto.TotalQty} صنف";
-        RevenueText = $"{dto.Revenue:N0} ل.ل";
+        RevenueText = CurrencyService.Format(dto.Revenue);
     }
 }
 
@@ -143,6 +143,6 @@ public class TopItemViewModel
         RankText = $"{rank}.";
         ItemName = dto.ItemName;
         QtyText = $"{dto.TotalSold} قطعة";
-        RevenueText = $"{dto.Revenue:N0} ل.ل";
+        RevenueText = CurrencyService.Format(dto.Revenue);
     }
 }
