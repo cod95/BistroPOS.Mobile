@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BistroPOS.Mobile.Services
@@ -14,6 +15,11 @@ namespace BistroPOS.Mobile.Services
         private readonly HttpClient _httpClient = new();
         private const int DiscoveryPort = 5051;
         private const int ApiPort = 5050;
+
+        private const string DebtsCacheKey = "CachedDebtCustomers";
+        private const string DebtsCacheTimeKey = "CachedDebtCustomersTime";
+
+        private static DateTime _lastCurrencyRefresh = DateTime.MinValue;
 
         public string? LastError { get; private set; }
         public string BaseUrl { get; private set; }
@@ -29,7 +35,25 @@ namespace BistroPOS.Mobile.Services
                 _httpClient.DefaultRequestHeaders.Add("X-Api-Token", token);
         }
 
-               public async Task<bool> DiscoverServerAsync()
+        // بيجيب رمز العملة من السيرفر (مرة كل ١٥ ثانية بالكتير) وبيحفظه.
+        // بيتنادى بعد ما ينجح أي طلب، يعني السيرفر أكيد واصل.
+        private async Task RefreshCurrencyIfNeededAsync()
+        {
+            if ((DateTime.Now - _lastCurrencyRefresh).TotalSeconds < 15) return;
+            _lastCurrencyRefresh = DateTime.Now;
+
+            try
+            {
+                var response = await _httpClient.GetAsync("/api/currency");
+                if (!response.IsSuccessStatusCode) return;
+                var result = await response.Content.ReadFromJsonAsync<CurrencyResponse>();
+                if (result != null && result.Success)
+                    CurrencyService.SetSymbol(result.PrimarySymbol);
+            }
+            catch { }
+        }
+
+        public async Task<bool> DiscoverServerAsync()
         {
             for (int attempt = 0; attempt < 3; attempt++)
             {
@@ -101,6 +125,7 @@ namespace BistroPOS.Mobile.Services
                 var response = await _httpClient.GetAsync("/api/menu");
                 if (!response.IsSuccessStatusCode) return null;
                 var result = await response.Content.ReadFromJsonAsync<MenuResponse>();
+                await RefreshCurrencyIfNeededAsync();
                 return result?.Items;
             }
             catch { return null; }
@@ -133,6 +158,7 @@ namespace BistroPOS.Mobile.Services
                 }
                 var result = await response.Content.ReadFromJsonAsync<OrdersResponse>();
                 LastError = null;
+                await RefreshCurrencyIfNeededAsync();
                 return result?.Orders;
             }
             catch (Exception ex)
@@ -191,7 +217,9 @@ namespace BistroPOS.Mobile.Services
                 string url = $"/api/reports?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
                 var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode) return null;
-                return await response.Content.ReadFromJsonAsync<ReportsDto>();
+                var result = await response.Content.ReadFromJsonAsync<ReportsDto>();
+                await RefreshCurrencyIfNeededAsync();
+                return result;
             }
             catch { return null; }
         }
@@ -203,9 +231,34 @@ namespace BistroPOS.Mobile.Services
                 var response = await _httpClient.GetAsync("/api/debts/customers");
                 if (!response.IsSuccessStatusCode) return null;
                 var result = await response.Content.ReadFromJsonAsync<DebtCustomersResponse>();
+
+                if (result?.Customers != null)
+                {
+                    string json = JsonSerializer.Serialize(result.Customers);
+                    Preferences.Set(DebtsCacheKey, json);
+                    Preferences.Set(DebtsCacheTimeKey, DateTime.Now.ToString("o"));
+                }
+
+                await RefreshCurrencyIfNeededAsync();
                 return result?.Customers;
             }
             catch { return null; }
+        }
+
+        public (List<DebtCustomerDto>? customers, DateTime? cachedAt) GetCachedDebtCustomers()
+        {
+            string json = Preferences.Get(DebtsCacheKey, "");
+            string timeStr = Preferences.Get(DebtsCacheTimeKey, "");
+
+            if (string.IsNullOrWhiteSpace(json)) return (null, null);
+
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<DebtCustomerDto>>(json);
+                DateTime.TryParse(timeStr, out DateTime cachedAt);
+                return (list, cachedAt);
+            }
+            catch { return (null, null); }
         }
 
         public async Task<CustomerDebtsResponse?> GetCustomerDebtsAsync(string name)
@@ -214,7 +267,9 @@ namespace BistroPOS.Mobile.Services
             {
                 var response = await _httpClient.GetAsync($"/api/debts/customer?name={Uri.EscapeDataString(name)}");
                 if (!response.IsSuccessStatusCode) return null;
-                return await response.Content.ReadFromJsonAsync<CustomerDebtsResponse>();
+                var result = await response.Content.ReadFromJsonAsync<CustomerDebtsResponse>();
+                await RefreshCurrencyIfNeededAsync();
+                return result;
             }
             catch { return null; }
         }
@@ -267,7 +322,17 @@ namespace BistroPOS.Mobile.Services
         public string Token { get; set; } = string.Empty;
     }
 
-      public class MenuItemDto
+    public class CurrencyResponse
+    {
+        public bool Success { get; set; }
+        public string PrimarySymbol { get; set; } = string.Empty;
+        public string ReferenceSymbol { get; set; } = string.Empty;
+        public decimal ExchangeRate { get; set; }
+        public int RateDirection { get; set; }
+        public bool HasConversion { get; set; }
+    }
+
+    public class MenuItemDto
     {
         public int ItemId { get; set; }
         public string Name { get; set; } = string.Empty;
@@ -309,7 +374,7 @@ namespace BistroPOS.Mobile.Services
         public int Quantity { get; set; }
     }
 
-        public class OrderDto
+    public class OrderDto
     {
         public int OrderId { get; set; }
         public string TableNumber { get; set; } = string.Empty;
