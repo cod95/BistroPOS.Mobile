@@ -10,6 +10,7 @@ public partial class DebtsPage : ContentPage
     private readonly ObservableCollection<DebtCustomerViewModel> _customers = new();
     private readonly ObservableCollection<CustomerDebtViewModel> _debts = new();
     private string? _selectedCustomer;
+    private bool _isOffline;
 
     public DebtsPage()
     {
@@ -35,15 +36,41 @@ public partial class DebtsPage : ContentPage
     private async Task LoadCustomersAsync()
     {
         var customers = await _api.GetDebtCustomersAsync();
-        if (customers == null)
+
+        if (customers != null)
         {
-            await DisplayAlert("خطأ", "ما قدرنا نجيب لائحة الزبائن", "حسناً");
+            _isOffline = false;
+            OfflineBanner.IsVisible = false;
+            AddCustomerButton.IsEnabled = true;
+            NewCustomerEntry.IsEnabled = true;
+
+            _customers.Clear();
+            foreach (var c in customers)
+                _customers.Add(new DebtCustomerViewModel(c, isOffline: false));
             return;
         }
 
-        _customers.Clear();
-        foreach (var c in customers)
-            _customers.Add(new DebtCustomerViewModel(c));
+        // ما قدرنا نتصل بالسيرفر — جربي البيانات المخزّنة محلياً
+        var (cached, cachedAt) = _api.GetCachedDebtCustomers();
+
+        if (cached != null)
+        {
+            _isOffline = true;
+            OfflineBanner.Text = cachedAt.HasValue
+                ? $"⚠️ غير متصلة بالسيرفر — بيانات مخزّنة من {cachedAt.Value:dd/MM hh:mm tt}"
+                : "⚠️ غير متصلة بالسيرفر — بيانات مخزّنة محلياً";
+            OfflineBanner.IsVisible = true;
+            AddCustomerButton.IsEnabled = false;
+            NewCustomerEntry.IsEnabled = false;
+
+            _customers.Clear();
+            foreach (var c in cached)
+                _customers.Add(new DebtCustomerViewModel(c, isOffline: true));
+        }
+        else
+        {
+            await DisplayAlert("خطأ", "ما قدرنا نجيب لائحة الزبائن، ولا يوجد بيانات محفوظة محلياً بعد", "حسناً");
+        }
     }
 
     private async void OnAddCustomerClicked(object sender, EventArgs e)
@@ -89,6 +116,12 @@ public partial class DebtsPage : ContentPage
     {
         if (sender is not Frame frame || frame.BindingContext is not DebtCustomerViewModel vm) return;
 
+        if (_isOffline)
+        {
+            await DisplayAlert("غير متاح", "بدك اتصال بالسيرفر لعرض تفاصيل الديون أو تسجيل دفعة", "حسناً");
+            return;
+        }
+
         _selectedCustomer = vm.Name;
         SelectedCustomerLabel.Text = vm.Name;
 
@@ -109,7 +142,7 @@ public partial class DebtsPage : ContentPage
             return;
         }
 
-        TotalRemainingLabel.Text = $"المتبقي الكلي: {result.TotalRemaining:N0} ل.ل";
+        TotalRemainingLabel.Text = $"المتبقي الكلي: {CurrencyService.Format(result.TotalRemaining)}";
 
         _debts.Clear();
         foreach (var d in result.Debts)
@@ -125,13 +158,13 @@ public partial class DebtsPage : ContentPage
     {
         if (string.IsNullOrEmpty(_selectedCustomer)) return;
 
-        if (!decimal.TryParse(PaymentAmountEntry.Text, out decimal amount) || amount <= 0)
+        if (!CurrencyService.TryParse(PaymentAmountEntry.Text, out decimal amount) || amount <= 0)
         {
             await DisplayAlert("تنبيه", "اكتب مبلغ دفعة صحيح", "حسناً");
             return;
         }
 
-        bool confirm = await DisplayAlert("تأكيد", $"تسجيل دفعة {amount:N0} ل.ل لـ\"{_selectedCustomer}\"؟", "نعم", "لأ");
+        bool confirm = await DisplayAlert("تأكيد", $"تسجيل دفعة {CurrencyService.Format(amount)} لـ\"{_selectedCustomer}\"؟", "نعم", "لأ");
         if (!confirm) return;
 
         var result = await _api.PayDebtAsync(_selectedCustomer, amount);
@@ -158,12 +191,14 @@ public class DebtCustomerViewModel
     public string Name { get; }
     public string RemainingText { get; }
     public Color RemainingColor { get; }
+    public bool IsActionEnabled { get; }
 
-    public DebtCustomerViewModel(DebtCustomerDto dto)
+    public DebtCustomerViewModel(DebtCustomerDto dto, bool isOffline)
     {
         Name = dto.Name;
-        RemainingText = dto.Remaining > 0 ? $"متبقي: {dto.Remaining:N0} ل.ل" : "مسدد بالكامل";
+        RemainingText = dto.Remaining > 0 ? $"متبقي: {CurrencyService.Format(dto.Remaining)}" : "مسدد بالكامل";
         RemainingColor = dto.Remaining > 0 ? Color.FromArgb("#A01E1E") : Color.FromArgb("#1E8C3C");
+        IsActionEnabled = !isOffline;
     }
 }
 
@@ -181,7 +216,7 @@ public class CustomerDebtViewModel
         ItemsText = dto.Items.Count > 0
             ? string.Join(", ", dto.Items.Select(i => $"{i.Name} {i.Quantity}"))
             : "بدون أصناف";
-        AmountsText = $"الإجمالي: {dto.Total:N0} — المدفوع: {dto.Paid:N0} — المتبقي: {dto.Remaining:N0} ل.ل";
+        AmountsText = $"الإجمالي: {CurrencyService.FormatNumber(dto.Total)} — المدفوع: {CurrencyService.FormatNumber(dto.Paid)} — المتبقي: {CurrencyService.Format(dto.Remaining)}";
         StatusText = dto.Status == "Paid" ? "مسدد" : "متبقي";
         StatusColor = dto.Status == "Paid" ? Color.FromArgb("#1E8C3C") : Color.FromArgb("#A01E1E");
     }
