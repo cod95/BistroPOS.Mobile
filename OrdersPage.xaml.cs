@@ -154,7 +154,7 @@ public partial class OrdersPage : ContentPage
         var result = await _api.DeliverAllAsync();
         if (result != null && result.Success)
         {
-            await DisplayAlert("تم", $"تم تسليم {result.Count} طلب، الإجمالي: {result.Total:N0} ل.ل", "تمام");
+            await DisplayAlert("تم", $"تم تسليم {result.Count} طلب، الإجمالي: {CurrencyService.Format(result.Total)}", "تمام");
             await LoadOrdersAsync();
         }
         else
@@ -232,7 +232,7 @@ public class OrderViewModel : INotifyPropertyChanged
         HasCreatedBy = !string.IsNullOrWhiteSpace(dto.CreatedBy);
 
         ItemsText = string.Join("\n", dto.Items.Select(i => $"{i.Name} {i.Quantity}"));
-        TotalText = $"{dto.Total:N0} ل.ل";
+        TotalText = CurrencyService.Format(dto.Total);
         OrderTime = dto.OrderTime;
         _isNew = isNew;
 
