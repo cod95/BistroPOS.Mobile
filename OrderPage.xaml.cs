@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using BarcodeScanning;
 using BistroPOS.Mobile.Services;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace BistroPOS.Mobile;
 
@@ -13,7 +14,6 @@ public partial class OrderPage : ContentPage
     private List<MenuItemViewModel> _allMenuItems = new();
     private readonly ApiService _api = new();
     private string _selectedCategory = "الكل";
-    private readonly List<Button> _categoryButtons = new();
 
     public OrderPage()
     {
@@ -58,46 +58,86 @@ public partial class OrderPage : ContentPage
 
         BuildCategoryChips();
         ApplyFilters();
+        UpdateTotal();
     }
 
     private void BuildCategoryChips()
     {
-        CategoryStack.Children.Clear();
-        _categoryButtons.Clear();
+        CategoryFlex.Children.Clear();
 
         var categories = new List<string> { "الكل" };
         categories.AddRange(_allMenuItems.Select(i => i.Category).Distinct().OrderBy(c => c));
 
         foreach (var category in categories)
         {
-            var btn = new Button
+            bool selected = category == _selectedCategory;
+
+            var card = new Border
             {
-                Text = category,
-                FontSize = 13,
-                Padding = new Thickness(14, 6),
-                CornerRadius = 18,
-                BackgroundColor = category == _selectedCategory ? Color.FromArgb("#FF6B00") : Color.FromArgb("#EFEFEF"),
-                TextColor = category == _selectedCategory ? Colors.White : Color.FromArgb("#333333")
+                WidthRequest = 76,
+                HeightRequest = 76,
+                Margin = new Thickness(4),
+                Padding = 4,
+                StrokeShape = new RoundRectangle { CornerRadius = 14 },
+                Stroke = selected ? Color.FromArgb("#FF6B00") : Color.FromArgb("#E0E0E0"),
+                StrokeThickness = selected ? 2 : 1,
+                BackgroundColor = selected ? Color.FromArgb("#FFF1E6") : Colors.White,
+                Content = new VerticalStackLayout
+                {
+                    VerticalOptions = LayoutOptions.Center,
+                    Spacing = 2,
+                    Children =
+                    {
+                        new Label
+                        {
+                            Text = GetCategoryIcon(category),
+                            FontSize = 24,
+                            HorizontalOptions = LayoutOptions.Center
+                        },
+                        new Label
+                        {
+                            Text = category,
+                            FontSize = 11,
+                            FontAttributes = selected ? FontAttributes.Bold : FontAttributes.None,
+                            TextColor = selected ? Color.FromArgb("#FF6B00") : Color.FromArgb("#333333"),
+                            HorizontalOptions = LayoutOptions.Center,
+                            HorizontalTextAlignment = TextAlignment.Center,
+                            LineBreakMode = LineBreakMode.TailTruncation,
+                            MaxLines = 2
+                        }
+                    }
+                }
             };
-            btn.Clicked += (s, e) =>
+
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += (s, e) =>
             {
                 _selectedCategory = category;
-                UpdateCategoryButtonStyles();
+                BuildCategoryChips();
                 ApplyFilters();
             };
-            _categoryButtons.Add(btn);
-            CategoryStack.Children.Add(btn);
+            card.GestureRecognizers.Add(tap);
+
+            CategoryFlex.Children.Add(card);
         }
     }
 
-    private void UpdateCategoryButtonStyles()
+    private string GetCategoryIcon(string category)
     {
-        foreach (var btn in _categoryButtons)
-        {
-            bool selected = btn.Text == _selectedCategory;
-            btn.BackgroundColor = selected ? Color.FromArgb("#FF6B00") : Color.FromArgb("#EFEFEF");
-            btn.TextColor = selected ? Colors.White : Color.FromArgb("#333333");
-        }
+        if (category == "الكل") return "⭐";
+        if (category.Contains("قهوة") || category.Contains("كوفي") || category.Contains("اسبريسو") || category.Contains("كابتشينو")) return "☕";
+        if (category.Contains("مياه")) return "💧";
+        if (category.Contains("عصير")) return "🧃";
+        if (category.Contains("بارد")) return "🥤";
+        if (category.Contains("ساخن")) return "☕";
+        if (category.Contains("مناقيش") || category.Contains("منقوشة")) return "🫓";
+        if (category.Contains("كرواسون")) return "🥐";
+        if (category.Contains("حلو")) return "🍰";
+        if (category.Contains("ساندويش") || category.Contains("سندويش")) return "🥪";
+        if (category.Contains("بيتزا")) return "🍕";
+        if (category.Contains("فطور") || category.Contains("افطار")) return "🍳";
+        if (category.Contains("سلطة")) return "🥗";
+        return "🍽️";
     }
 
     private void ApplyFilters()
@@ -142,10 +182,10 @@ public partial class OrderPage : ContentPage
     private void UpdateTotal()
     {
         decimal subtotal = _allMenuItems.Sum(i => i.Subtotal);
-        decimal.TryParse(DiscountEntry.Text, out decimal discount);
+        CurrencyService.TryParse(DiscountEntry.Text, out decimal discount);
         decimal total = subtotal - discount;
         if (total < 0) total = 0;
-        TotalLabel.Text = $"الإجمالي: {total:N0} ل.ل";
+        TotalLabel.Text = $"الإجمالي: {CurrencyService.Format(total)}";
     }
 
     private async void OnScanBarcodeClicked(object sender, EventArgs e)
@@ -204,7 +244,7 @@ public partial class OrderPage : ContentPage
             return;
         }
 
-        decimal.TryParse(DiscountEntry.Text, out decimal discount);
+        CurrencyService.TryParse(DiscountEntry.Text, out decimal discount);
 
         var request = new CreateOrderRequest
         {
@@ -238,6 +278,8 @@ public class MenuItemViewModel : INotifyPropertyChanged
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string Barcode { get; set; } = string.Empty;
+
+    public string PriceText => CurrencyService.Format(Price);
 
     private int _quantity;
     public int Quantity
