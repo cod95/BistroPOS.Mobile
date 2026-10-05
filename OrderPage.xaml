@@ -33,7 +33,7 @@
                    IsVisible="False"/>
 
             <Entry x:Name="DiscountEntry"
-                   Placeholder="الحسم بالليرة (اختياري)"
+                   Placeholder="الحسم (اختياري)"
                    Keyboard="Numeric"/>
         </VerticalStackLayout>
 
@@ -74,7 +74,7 @@
                                FontAttributes="Bold" FontSize="16"/>
 
                         <Label Grid.Row="1" Grid.Column="0"
-                               Text="{Binding Price, StringFormat='{0:N0} ل.ل'}"
+                               Text="{Binding PriceText}"
                                VerticalOptions="Center"/>
 
                         <Button Grid.Row="1" Grid.Column="1"
