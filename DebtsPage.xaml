@@ -6,28 +6,39 @@
 
     <Grid RowDefinitions="Auto,*">
 
-            <Button Text="←"
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    WidthRequest="44"
-                    HeightRequest="36"
-                    Padding="0"
-                    HorizontalOptions="Start"
-                    BackgroundColor="#444444"
-                    TextColor="White"
-                    Clicked="OnBackClicked"/>
+        <Button Grid.Row="0"
+                Text="←"
+                FontSize="18"
+                FontAttributes="Bold"
+                WidthRequest="44"
+                HeightRequest="36"
+                Padding="0"
+                HorizontalOptions="Start"
+                BackgroundColor="#444444"
+                TextColor="White"
+                Margin="10,10,0,0"
+                Clicked="OnBackClicked"/>
 
         <!-- شاشة لائحة الزبائن -->
-        <Grid x:Name="CustomerListSection" Grid.Row="1" RowDefinitions="Auto,*">
+        <Grid x:Name="CustomerListSection" Grid.Row="1" RowDefinitions="Auto,Auto,*">
 
-            <VerticalStackLayout Grid.Row="0" Padding="10,10,10,0" Spacing="8">
+            <Label x:Name="OfflineBanner"
+                   Grid.Row="0"
+                   IsVisible="False"
+                   BackgroundColor="#FFF3E0"
+                   TextColor="#B46400"
+                   FontSize="12"
+                   Padding="10,6"
+                   Margin="10,10,10,0"/>
+
+            <VerticalStackLayout Grid.Row="1" Padding="10,10,10,0" Spacing="8">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Entry x:Name="NewCustomerEntry" Grid.Column="0" Placeholder="اسم زبون جديد"/>
-                    <Button Grid.Column="1" Text="إضافة" BackgroundColor="#BA7517" TextColor="White" FontAttributes="Bold" Clicked="OnAddCustomerClicked"/>
+                    <Button x:Name="AddCustomerButton" Grid.Column="1" Text="إضافة" BackgroundColor="#BA7517" TextColor="White" FontAttributes="Bold" Clicked="OnAddCustomerClicked"/>
                 </Grid>
             </VerticalStackLayout>
 
-            <CollectionView x:Name="CustomersCollectionView" Grid.Row="1" Margin="10">
+            <CollectionView x:Name="CustomersCollectionView" Grid.Row="2" Margin="10">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame Margin="0,5" Padding="12" CornerRadius="8" BorderColor="#E0E0E0">
@@ -41,6 +52,7 @@
                                 </VerticalStackLayout>
                                 <Button Grid.Column="1"
                                         Text="حذف"
+                                        IsEnabled="{Binding IsActionEnabled}"
                                         BackgroundColor="#FFEBEB"
                                         TextColor="#A01E1E"
                                         FontSize="12"
