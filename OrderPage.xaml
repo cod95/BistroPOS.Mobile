@@ -7,7 +7,7 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
-                <Button Grid.Row="0"
+        <Button Grid.Row="0"
                 Text="←"
                 FontSize="18"
                 FontAttributes="Bold"
@@ -54,11 +54,13 @@
         </Grid>
 
         <ScrollView Grid.Row="3"
-                    Orientation="Horizontal"
-                    HorizontalScrollBarVisibility="Never"
-                    Margin="10,8,10,0"
-                    HeightRequest="44">
-            <HorizontalStackLayout x:Name="CategoryStack" Spacing="8"/>
+                    Orientation="Vertical"
+                    HeightRequest="100"
+                    Margin="10,8,10,0">
+            <FlexLayout x:Name="CategoryFlex"
+                        Direction="Row"
+                        Wrap="Wrap"
+                        JustifyContent="Start"/>
         </ScrollView>
 
         <CollectionView x:Name="MenuCollectionView"
@@ -98,7 +100,7 @@
 
         <VerticalStackLayout Grid.Row="5" Padding="15" BackgroundColor="#F5F5F5">
             <Label x:Name="TotalLabel"
-                   Text="الإجمالي: 0 ل.ل"
+                   Text="الإجمالي: 0"
                    FontAttributes="Bold" FontSize="18"
                    HorizontalOptions="Center"/>
 
@@ -121,7 +123,7 @@
                         TextColor="White"
                         FontAttributes="Bold"
                         Clicked="OnCloseScannerClicked"/>
-                <Label Text="وجّه الكاميرا نحو الباركود"
+                <Label Text="وجّهي الكاميرا نحو الباركود"
                        TextColor="White"
                        HorizontalOptions="Center"/>
             </VerticalStackLayout>
